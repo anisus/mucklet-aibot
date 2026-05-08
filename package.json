@@ -1,0 +1,29 @@
+{
+  "name": "mucklet-aibot",
+  "version": "0.1.0",
+  "description": "A Mucklet bot controlled through the ChatGPT API.",
+  "type": "module",
+  "main": "index.js",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "lint": "eslint .",
+    "test": "node --test"
+  },
+  "author": "Accipiter Nisus",
+  "license": "MIT",
+  "dependencies": {
+    "isomorphic-ws": "^5.0.0",
+    "resclient": "^2.5.1",
+    "tinyargs": "^0.1.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.3",
+    "eslint": "^9.39.3",
+    "eslint-plugin-jsdoc": "^61.4.1",
+    "globals": "^16.5.0"
+  }
+}

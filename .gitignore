@@ -1,0 +1,10 @@
+node_modules/
+coverage/
+.eslintcache
+
+*.log
+npm-debug.log*
+
+.env
+.env.*
+!.env.example
