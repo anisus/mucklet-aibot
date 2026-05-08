@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { errToString } from '../src/errors.js';
+import { errToString } from '../src/utils/errors.js';
 
 test("errToString formats res error parameters", () => {
 	assert.equal(errToString({

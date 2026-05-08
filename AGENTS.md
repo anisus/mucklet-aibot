@@ -6,7 +6,8 @@ This is a private Node.js 22+ ESM project for a connecting to a Mucklet realm AP
 
 ## Repository Layout
 
-- `index.js`: CLI entry point and top-level bot login flow.
+- `index.js`: CLI executable wrapper.
+- `src/main.js`: CLI startup flow and top-level bot runtime.
 - `src/cli.js`: command-line option definitions, parsing, and help output.
 - `src/config.js`: config file loading.
 - `src/client.js`: Mucklet/resclient connection logic.

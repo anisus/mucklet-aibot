@@ -1,6 +1,5 @@
 import { createRequire } from 'module';
-
-import { errToString } from './errors.js';
+import { errToString } from '../utils/errors.js';
 
 const require = createRequire(import.meta.url);
 const resclient = require('resclient');
@@ -11,13 +10,21 @@ class BotClient extends ResClient {
 		super(() => new globalThis.WebSocket(apiUrl));
 
 		this.authErr = null;
-		this.setOnConnect(c => c.authenticate('auth', 'authenticateBot', {
+		this.setOnConnect(c => c.authenticate('auth', 'authenticate', {
 			token,
 		}).catch(err => {
 			this.authErr = err;
 		}));
 	}
 
+	/**
+	 * Gets a m
+	 *
+	 * @param {object} [opts] Optional parameters.
+	 * @param {object} [opts.pingDuration] Ping duration is milliseconds. Defaults to 45 min.
+	 * @param {object} [opts.defaultPingRetry] Ping retry duration is milliseconds on failed ping. Defaults to 1 min.
+	 * @returns {Model} Bot model
+	 */
 	async getBot() {
 		try {
 			await this.connect();
@@ -33,6 +40,8 @@ class BotClient extends ResClient {
 		}
 	}
 }
+
+export default BotClient;
 
 export function createBotClient(apiUrl, token) {
 	return new BotClient(apiUrl, token);
