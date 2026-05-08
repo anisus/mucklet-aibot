@@ -1,12 +1,9 @@
 # Mucklet AI Bot
 
-A Node.js project for connecting to a Mucklet realm with a bot token. The first
-version only verifies the bot login flow: connect, authenticate, fetch the bot
-with `core.getBot`, log the result, and disconnect.
+A Node.js project for connecting to a Mucklet realm with a bot token and using
+ChatGPT to control it.
 
-OpenAI/ChatGPT behavior is intentionally deferred until the Mucklet bot login
-skeleton is working. Future ChatGPT integration should use the official
-`openai` package and `OPENAI_API_KEY`.
+It is still under construction.
 
 ## Prerequisites
 
@@ -44,6 +41,9 @@ or:
 ```text
 MUCKLET_BOT_TOKEN=<BOT_TOKEN> npm start
 ```
+
+The process keeps running after startup so it can keep the character awake. Press
+Ctrl+C to stop it.
 
 Token sources are checked in this order:
 
