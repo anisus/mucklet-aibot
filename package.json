@@ -16,7 +16,6 @@
   "author": "Accipiter Nisus",
   "license": "MIT",
   "dependencies": {
-    "isomorphic-ws": "^5.0.0",
     "resclient": "^2.5.1",
     "tinyargs": "^0.1.4"
   },

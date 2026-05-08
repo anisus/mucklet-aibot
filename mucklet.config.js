@@ -2,6 +2,7 @@ const config = {
 	realm: {
 		/** URL to the realm API WebSocket endpoint. */
 		// apiUrl: 'wss://api.test.mucklet.com',
+		apiUrl: 'ws://localhost:8080/',
 
 		/**
 		 * For security reason, it is not possible to store the token in the config file.

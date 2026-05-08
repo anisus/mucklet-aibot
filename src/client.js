@@ -4,12 +4,11 @@ import { errToString } from './errors.js';
 
 const require = createRequire(import.meta.url);
 const resclient = require('resclient');
-const WebSocket = require('isomorphic-ws');
 const ResClient = resclient.default;
 
 class BotClient extends ResClient {
 	constructor(apiUrl, token) {
-		super(() => new WebSocket(apiUrl));
+		super(() => new globalThis.WebSocket(apiUrl));
 
 		this.authErr = null;
 		this.setOnConnect(c => c.authenticate('auth', 'authenticateBot', {
