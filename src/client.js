@@ -1,10 +1,10 @@
-import { createRequire } from "module";
+import { createRequire } from 'module';
 
-import { errToString } from "./errors.js";
+import { errToString } from './errors.js';
 
 const require = createRequire(import.meta.url);
-const resclient = require("resclient");
-const WebSocket = require("isomorphic-ws");
+const resclient = require('resclient');
+const WebSocket = require('isomorphic-ws');
 const ResClient = resclient.default;
 
 class BotClient extends ResClient {
@@ -12,7 +12,7 @@ class BotClient extends ResClient {
 		super(() => new WebSocket(apiUrl));
 
 		this.authErr = null;
-		this.setOnConnect(c => c.authenticate("auth", "authenticateBot", {
+		this.setOnConnect(c => c.authenticate('auth', 'authenticateBot', {
 			token,
 		}).catch(err => {
 			this.authErr = err;
@@ -22,12 +22,12 @@ class BotClient extends ResClient {
 	async getBot() {
 		try {
 			await this.connect();
-			return await this.call("core", "getBot");
+			return await this.call('core', 'getBot');
 		} catch (err) {
-			if (err?.code == "system.connectionError") {
+			if (err?.code == 'system.connectionError') {
 				throw "failed to connect to realm api";
 			}
-			if (err?.code == "system.notFound") {
+			if (err?.code == 'system.notFound') {
 				throw "api service unavailable";
 			}
 			throw errToString(this.authErr || err);

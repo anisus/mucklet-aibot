@@ -1,11 +1,11 @@
 export function errToString(err) {
 	if (!err) {
-		return "";
+		return '';
 	}
-	if (typeof err == "string") {
+	if (typeof err == 'string') {
 		return err;
 	}
-	if (typeof err != "object") {
+	if (typeof err != 'object') {
 		return String(err);
 	}
 	if (err.toString && !err.code) {
@@ -16,13 +16,13 @@ export function errToString(err) {
 	let params = err.data || {};
 
 	return msg.replace(/{([^}]+)}/g, (match, idx) => {
-		return typeof params[idx] != "undefined"
+		return typeof params[idx] != 'undefined'
 			? params[idx]
-			: "???";
+			: '???';
 	});
 }
 
 export function printError(msg) {
-	console.error("\n" + (msg || "An error occurred"));
+	console.error('\n' + (msg || "An error occurred"));
 	process.exitCode = 1;
 }

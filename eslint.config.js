@@ -1,98 +1,98 @@
-import js from "@eslint/js";
-import jsdoc from "eslint-plugin-jsdoc";
-import globals from "globals";
+import js from '@eslint/js';
+import jsdoc from 'eslint-plugin-jsdoc';
+import globals from 'globals';
 
 export default [
 	{
 		ignores: [
-			"coverage/**",
-			"node_modules/**",
+			'coverage/**',
+			'node_modules/**',
 		],
 	},
 	js.configs.recommended,
 	{
-		files: [ "**/*.js" ],
+		files: [ '**/*.js' ],
 		plugins: {
 			jsdoc,
 		},
 		languageOptions: {
 			ecmaVersion: 2024,
-			sourceType: "module",
+			sourceType: 'module',
 			globals: {
 				...globals.node,
 			},
 		},
 		settings: {
 			jsdoc: {
-				mode: "typescript",
+				mode: 'typescript',
 				tagNamePreference: {
 					returns: null,
 				},
 			},
 		},
 		rules: {
-			"semi": [ "error", "always" ],
-			"indent": [ "error", "tab", {
-				"SwitchCase": 1,
-				"ObjectExpression": 1,
-				"MemberExpression": 1,
-				"VariableDeclarator": 1,
-				"FunctionDeclaration": {
-					"parameters": "first",
+			'semi': [ 'error', 'always' ],
+			'indent': [ 'error', 'tab', {
+				'SwitchCase': 1,
+				'ObjectExpression': 1,
+				'MemberExpression': 1,
+				'VariableDeclarator': 1,
+				'FunctionDeclaration': {
+					'parameters': 'first',
 				},
-				"ArrayExpression": "first",
+				'ArrayExpression': 'first',
 			}],
-			"brace-style": [ "error", "1tbs", {
-				"allowSingleLine": true,
+			'brace-style': [ 'error', '1tbs', {
+				'allowSingleLine': true,
 			}],
-			"no-unused-vars": [ "error", {
-				"args": "none",
+			'no-unused-vars': [ 'error', {
+				'args': 'none',
 			}],
-			"no-dupe-keys": [ "error" ],
-			"no-dupe-args": [ "error" ],
-			"jsdoc/require-jsdoc": 0,
-			"jsdoc/no-undefined-types": 0,
-			"jsdoc/valid-types": 0,
-			"jsdoc/require-returns": 0,
-			"jsdoc/check-types": [ "warn", {
-				"noDefaults": true,
+			'no-dupe-keys': [ 'error' ],
+			'no-dupe-args': [ 'error' ],
+			'jsdoc/require-jsdoc': 0,
+			'jsdoc/no-undefined-types': 0,
+			'jsdoc/valid-types': 0,
+			'jsdoc/require-returns': 0,
+			'jsdoc/check-types': [ 'warn', {
+				'noDefaults': true,
 			}],
-			"jsdoc/check-alignment": 0,
-			"jsdoc/tag-lines": 0,
-			"array-bracket-spacing": [ "error", "always", {
-				"objectsInArrays": false,
-				"arraysInArrays": false,
+			'jsdoc/check-alignment': 0,
+			'jsdoc/tag-lines': 0,
+			'array-bracket-spacing': [ 'error', 'always', {
+				'objectsInArrays': false,
+				'arraysInArrays': false,
 			}],
-			"object-curly-spacing": [ "error", "always", {
-				"objectsInObjects": false,
+			'object-curly-spacing': [ 'error', 'always', {
+				'objectsInObjects': false,
 			}],
-			"comma-spacing": [ "error", {
-				"before": false,
-				"after": true,
+			'comma-spacing': [ 'error', {
+				'before': false,
+				'after': true,
 			}],
-			"comma-dangle": [ "error", "always-multiline" ],
-			"linebreak-style": [ "error", "unix" ],
-			"no-self-assign": [ "error" ],
-			"no-redeclare": [ "error" ],
-			"no-useless-escape": [ "error" ],
-			"yoda": [ "error" ],
-			"no-multi-spaces": [ "error" ],
-			"space-infix-ops": [ "error" ],
-			"no-unreachable": [ "warn" ],
-			"no-debugger": [ "warn" ],
-			"space-in-parens": [ "error", "never" ],
-			"keyword-spacing": [ "error", {
-				"before": true,
-				"after": true,
+			'comma-dangle': [ 'error', 'always-multiline' ],
+			'linebreak-style': [ 'error', 'unix' ],
+			'no-self-assign': [ 'error' ],
+			'no-redeclare': [ 'error' ],
+			'no-useless-escape': [ 'error' ],
+			'yoda': [ 'error' ],
+			'no-multi-spaces': [ 'error' ],
+			'space-infix-ops': [ 'error' ],
+			'no-unreachable': [ 'warn' ],
+			'no-debugger': [ 'warn' ],
+			'space-in-parens': [ 'error', 'never' ],
+			'keyword-spacing': [ 'error', {
+				'before': true,
+				'after': true,
 			}],
-			"arrow-spacing": [ "error", {
-				"before": true,
-				"after": true,
+			'arrow-spacing': [ 'error', {
+				'before': true,
+				'after': true,
 			}],
-			"block-spacing": [ "error" ],
-			"eol-last": [ "error", "always" ],
-			"no-multiple-empty-lines": [ "error", { "max": 2, "maxEOF": 1 }],
-			"key-spacing": [ "error" ],
+			'block-spacing': [ 'error' ],
+			'eol-last': [ 'error', 'always' ],
+			'no-multiple-empty-lines': [ 'error', { 'max': 2, 'maxEOF': 1 }],
+			'key-spacing': [ 'error' ],
 		},
 	},
 ];

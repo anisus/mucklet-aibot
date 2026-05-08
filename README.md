@@ -26,7 +26,7 @@ Set the realm API WebSocket URL in `mucklet.config.js`:
 ```js
 export default {
 	realm: {
-		apiUrl: "wss://api.test.mucklet.com",
+		apiUrl: 'wss://api.test.mucklet.com',
 	},
 };
 ```

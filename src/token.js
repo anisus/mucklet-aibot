@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs from 'fs';
 
 export function getToken(token, tokenFile) {
 	if (token) {
@@ -7,16 +7,16 @@ export function getToken(token, tokenFile) {
 	if (tokenFile) {
 		return readTokenFile(tokenFile);
 	}
-	if (process.env.MUCKLET_BOT_TOKEN_FILE) {
-		return readTokenFile(process.env.MUCKLET_BOT_TOKEN_FILE);
+	if (process.env['MUCKLET_BOT_TOKEN_FILE']) {
+		return readTokenFile(process.env['MUCKLET_BOT_TOKEN_FILE']);
 	}
-	if (process.env.MUCKLET_BOT_TOKEN) {
-		return process.env.MUCKLET_BOT_TOKEN.trim();
+	if (process.env['MUCKLET_BOT_TOKEN']) {
+		return process.env['MUCKLET_BOT_TOKEN'].trim();
 	}
 
-	return "";
+	return '';
 }
 
 function readTokenFile(file) {
-	return fs.readFileSync(file, "utf8").trim();
+	return fs.readFileSync(file, 'utf8').trim();
 }

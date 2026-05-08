@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import { parseCli, printHelp } from "./src/cli.js";
-import { loadConfig } from "./src/config.js";
-import { createBotClient } from "./src/client.js";
-import { errToString, printError } from "./src/errors.js";
-import { getToken } from "./src/token.js";
+import { parseCli, printHelp } from './src/cli.js';
+import { loadConfig } from './src/config.js';
+import { createBotClient } from './src/client.js';
+import { errToString, printError } from './src/errors.js';
+import { getToken } from './src/token.js';
 
 async function main(args) {
 	const cli = parseCli(args);
@@ -13,8 +13,8 @@ async function main(args) {
 		return;
 	}
 
-	const cfg = await loadConfig(cli.config || "mucklet.config.js");
-	const apiUrl = cli.apiurl || cfg.realm?.apiUrl || "";
+	const cfg = await loadConfig(cli.config || 'mucklet.config.js');
+	const apiUrl = cli.apiurl || cfg.realm?.apiUrl || '';
 	const token = getToken(cli.token, cli.tokenfile);
 
 	if (!token) {
