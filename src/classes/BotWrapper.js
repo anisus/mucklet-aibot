@@ -4,38 +4,60 @@ import listenResource from '../utils/listenResource.js';
 export const defaultPingDuration = 1000 * 60 * 45; // 45 minutes between successful pings
 export const defaultPingRetry = 1000 * 60 * 1; // 1 minute between retries
 
-function assertControlled(bot) {
-	if (!bot.controlled) {
+/**
+ * @typedef {object} BotWrapperOptions
+ * @property {number} [pingDuration] Ping duration in milliseconds.
+ * @property {number} [pingRetry] Ping retry duration in milliseconds after a failed ping.
+ * @property {(...msgs: unknown[]) => void} [onError] Error log function.
+ * @property {(...msgs: unknown[]) => void} [onInfo] Info log function.
+ */
+
+/**
+ * @typedef {object} WakeupOptions
+ * @property {boolean} [hidden] Hides the character in the awake list.
+ */
+
+/**
+ * Gets the controlled character or throws if the bot is not controlled.
+ * @param {BotModel | null} bot Bot model.
+ * @returns {CtrlModel} Controlled character model.
+ */
+
+function getControlledOrThrow(bot) {
+	if (!bot?.controlled) {
 		throw new Err('bot.notControlled', "Bot is not controlled");
 	}
+	return bot.controlled;
 }
 
+/**
+ * Gets the controlled character or throws if the bot is not awake.
+ * @param {BotModel | null} bot Bot model.
+ * @returns {CtrlModel} Controlled character model.
+ */
 function assertAwake(bot) {
-	assertControlled(bot);
-	if (bot.controlled.state != 'awake') {
+	const ctrl = getControlledOrThrow(bot);
+	if (ctrl.state != 'awake') {
 		throw new Err('bot.notAwake', "Bot is not awake");
 	}
+	return ctrl;
 }
 
 class BotWrapper {
 
 	/**
 	 * Creates a BotWrapper instance.
-	 * @param {Model} bot Bot model.
-	 * @param {object} [opts] Optional parameters.
-	 * @param {object} [opts.pingDuration] Ping duration is milliseconds. Defaults to 45 min.
-	 * @param {object} [opts.pingRetry] Ping retry duration is milliseconds on failed ping. Defaults to 1 min.
-	 * @param {(...msgs: any[]) => void} [opts.onError] Error log function.
-	 * @param {(...msgs: any[]) => void} [opts.onInfo] Info log function.
+	 * @param {BotModel} bot Bot model.
+	 * @param {BotWrapperOptions} [opts] Optional parameters.
 	 */
 	constructor(bot, opts = {}) {
 		this.bot = bot;
 
-		this.pingDuration = opts?.pingDuration || defaultPingDuration;
-		this.pingRetry = opts?.pingRetry || defaultPingRetry;
+		this.pingDuration = opts.pingDuration || defaultPingDuration;
+		this.pingRetry = opts.pingRetry || defaultPingRetry;
 		this.pingTimer = null;
-		this.onError = opts?.onError;
-		this.onInfo = opts?.onInfo;
+		this.onError = opts.onError;
+		this.onInfo = opts.onInfo;
 
 		// Bind callbacks
 		this._onBotUnsubscribe = this._onBotUnsubscribe.bind(this);
@@ -47,19 +69,19 @@ class BotWrapper {
 
 	/**
 	 * Gets the character model.
-	 * @returns {Model} Bot character.
+	 * @returns {CtrlModel | null} Bot character.
 	 */
 	getChar() {
-		return this.bot.char || null;
+		return this.bot?.char || null;
 	}
 
 
 	/**
 	 * Gets the controlled character model.
-	 * @returns {Model | null} Controlled bot character or null if not controlled.
+	 * @returns {CtrlModel | null} Controlled bot character or null if not controlled.
 	 */
 	getCtrl() {
-		return this.bot.controlled || null;
+		return this.bot?.controlled || null;
 	}
 
 	/**
@@ -82,15 +104,15 @@ class BotWrapper {
 
 	/**
 	 * Controls and wakes up the character if needed.
-	 * @param {object} [options] Optional parameters
-	 * @param {boolean} [options.hidden] Flag to hide the character in the awake list.
+	 * @param {WakeupOptions} [options] Optional parameters.
 	 * @returns {Promise<boolean>} Promise to the result. True if character woke
 	 * up, or false if already awake.
 	 */
 	async wakeup(options = {}) {
+		const bot = this._requireBot();
 		let char = this.getCtrl();
 		if (!char) {
-			char = await this.bot.call('controlChar');
+			char = await bot.call('controlChar');
 		}
 
 		const woke = char.state != 'awake';
@@ -107,8 +129,8 @@ class BotWrapper {
 	 * @param {string} msg Message to say.
 	 */
 	async say(msg) {
-		assertAwake(this.bot);
-		await this.getCtrl().call('say', { msg });
+		const ctrl = assertAwake(this.bot);
+		await ctrl.call('say', { msg });
 	}
 
 	dispose() {
@@ -117,6 +139,22 @@ class BotWrapper {
 		this.bot = null;
 	}
 
+	/**
+	 * Gets the active bot model.
+	 * @returns {BotModel} Bot model.
+	 * @throws {Err} Throws if the wrapper has been disposed.
+	 */
+	_requireBot() {
+		if (!this.bot) {
+			throw new Err('bot.disposed', "Bot wrapper is disposed");
+		}
+		return this.bot;
+	}
+
+	/**
+	 * Adds or removes bot listeners.
+	 * @param {boolean} on Adds listeners when true; removes them when false.
+	 */
 	_listenBot(on) {
 		listenResource(this.bot, on, this._onBotUnsubscribe, 'unsubscribe');
 		listenResource(this.bot, on, this._onBotChange);
@@ -135,18 +173,29 @@ class BotWrapper {
 		}
 	}
 
+	/**
+	 * Schedules the next ping if no ping is active.
+	 */
 	_startPing() {
 		if (!this.pingTimer) {
 			this._ping();
 		}
 	}
 
+	/**
+	 * Stops the active ping timer.
+	 */
 	_stopPing() {
-		clearTimeout(this.pingTimer);
+		if (this.pingTimer && this.pingTimer !== true) {
+			clearTimeout(this.pingTimer);
+		}
 		this.pingTimer = null;
 	}
 
-	_ping(since = 0) {
+	/**
+	 * Pings the controlled character and schedules the next ping.
+	 */
+	_ping() {
 		let ctrl = this.getCtrl();
 		if (!ctrl) {
 			this._stopPing();

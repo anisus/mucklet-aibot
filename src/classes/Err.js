@@ -3,9 +3,18 @@
  */
 class Err {
 
+	/**
+	 * Creates a local error.
+	 * @param {string} [code] Error code.
+	 * @param {string} [message] Error message.
+	 * @param {unknown} [data] Additional error data.
+	 */
 	constructor(code, message, data) {
+		/** @type {string} */
 		this._code = code || 'unknown';
+		/** @type {string} */
 		this._message = message || `Unknown error`;
+		/** @type {unknown} */
 		this._data = data;
 	}
 
@@ -27,7 +36,7 @@ class Err {
 
 	/**
 	 * Error data object
-	 * @type {*}
+	 * @type {unknown}
 	 */
 	get data() {
 		return this._data;
