@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { getToken } from '../src/token.js';
+import { getToken } from '../src/utils/token.js';
 
 test("getToken prefers cli token over environment token", () => {
 	const previous = process.env.MUCKLET_BOT_TOKEN;

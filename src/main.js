@@ -1,9 +1,9 @@
 import { parseCli, printHelp } from './cli.js';
-import { loadConfig } from './config.js';
+import { loadConfig } from './utils/config.js';
 import { createBotClient } from './classes/BotClient.js';
 import BotWrapper from './classes/BotWrapper.js';
 import { errToString, printError } from './utils/errors.js';
-import { getToken } from './token.js';
+import { getToken } from './utils/token.js';
 
 export async function runCli(args) {
 	try {
