@@ -8,8 +8,7 @@ export const defaultPingRetry = 1000 * 60 * 1; // 1 minute between retries
  * @typedef {object} BotWrapperOptions
  * @property {number} [pingDuration] Ping duration in milliseconds.
  * @property {number} [pingRetry] Ping retry duration in milliseconds after a failed ping.
- * @property {(...msgs: unknown[]) => void} [onError] Error log function.
- * @property {(...msgs: unknown[]) => void} [onInfo] Info log function.
+ * @property {{ log?: (...msgs: unknown[]) => void, error?: (...msgs: unknown[]) => void}} [logger] Logger functions.
  */
 
 /**
@@ -56,14 +55,17 @@ class BotWrapper {
 		this.pingDuration = opts.pingDuration || defaultPingDuration;
 		this.pingRetry = opts.pingRetry || defaultPingRetry;
 		this.pingTimer = null;
-		this.onError = opts.onError;
-		this.onInfo = opts.onInfo;
+		this.logger = opts.logger || console;
 
 		// Bind callbacks
 		this._onBotUnsubscribe = this._onBotUnsubscribe.bind(this);
 		this._onBotChange = this._onBotChange.bind(this);
+		this._onCtrlOut = this._onCtrlOut.bind(this);
+
+		this.controlled = null;
 
 		this._listenBot(true);
+		this._onBotChange();
 		this._startPing();
 	}
 
@@ -72,7 +74,7 @@ class BotWrapper {
 	 * @returns {CtrlModel | null} Bot character.
 	 */
 	getChar() {
-		return this.bot?.char || null;
+		return this.bot.char || null;
 	}
 
 
@@ -80,8 +82,8 @@ class BotWrapper {
 	 * Gets the controlled character model.
 	 * @returns {CtrlModel | null} Controlled bot character or null if not controlled.
 	 */
-	getCtrl() {
-		return this.bot?.controlled || null;
+	getControlledChar() {
+		return this.bot.controlled || null;
 	}
 
 	/**
@@ -109,10 +111,9 @@ class BotWrapper {
 	 * up, or false if already awake.
 	 */
 	async wakeup(options = {}) {
-		const bot = this._requireBot();
-		let char = this.getCtrl();
+		let char = this.getControlledChar();
 		if (!char) {
-			char = await bot.call('controlChar');
+			char = await this.bot.call('controlChar');
 		}
 
 		const woke = char.state != 'awake';
@@ -133,24 +134,6 @@ class BotWrapper {
 		await ctrl.call('say', { msg });
 	}
 
-	dispose() {
-		this._listenBot(false);
-		this._stopPing();
-		this.bot = null;
-	}
-
-	/**
-	 * Gets the active bot model.
-	 * @returns {BotModel} Bot model.
-	 * @throws {Err} Throws if the wrapper has been disposed.
-	 */
-	_requireBot() {
-		if (!this.bot) {
-			throw new Err('bot.disposed', "Bot wrapper is disposed");
-		}
-		return this.bot;
-	}
-
 	/**
 	 * Adds or removes bot listeners.
 	 * @param {boolean} on Adds listeners when true; removes them when false.
@@ -160,17 +143,36 @@ class BotWrapper {
 		listenResource(this.bot, on, this._onBotChange);
 	}
 
+	/**
+	 * Adds or removes bot listeners.
+	 * @param {boolean} on Adds listeners when true; removes them when false.
+	 */
+	_listenCtrl(on) {
+		listenResource(this.controlled, on, this._onCtrlOut, 'out');
+	}
+
 	_onBotUnsubscribe() {
 		// Remove bot model subscription
 		this.dispose();
 	}
 
 	_onBotChange() {
-		if (this.getCtrl()) {
+		let c = this.getControlledChar();
+		if (c === this.controlled) return;
+
+		this._listenCtrl(false);
+		this.controlled = c;
+		this._listenCtrl(true);
+
+		if (c) {
 			this._startPing();
 		} else {
 			this._stopPing();
 		}
+	}
+
+	_onCtrlOut(ev) {
+		this.logger.log?.("Event: ", JSON.stringify(ev));
 	}
 
 	/**
@@ -196,7 +198,7 @@ class BotWrapper {
 	 * Pings the controlled character and schedules the next ping.
 	 */
 	_ping() {
-		let ctrl = this.getCtrl();
+		let ctrl = this.getControlledChar();
 		if (!ctrl) {
 			this._stopPing();
 			return;
@@ -206,7 +208,7 @@ class BotWrapper {
 		ctrl.call('ping').then(
 			() => this.pingDuration,
 			(err) => {
-				this.onError?.("error pinging: ", err);
+				this.logger.error?.("error pinging: ", err);
 				return this.pingRetry;
 			},
 		).then(d => {
@@ -219,6 +221,13 @@ class BotWrapper {
 				this.pingTimer = t;
 			}
 		});
+	}
+
+	dispose() {
+		this._listenCtrl(false);
+		this._listenBot(false);
+		this._stopPing();
+		this.controlled = null;
 	}
 }
 

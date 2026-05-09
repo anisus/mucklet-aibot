@@ -42,8 +42,10 @@ test("runBot connects, wakes, greets, and disconnects", async () => {
 		waitForShutdown() {
 			return Promise.resolve();
 		},
-		log(msg) {
-			logs.push(msg);
+		logger: {
+			log(msg) {
+				logs.push(msg);
+			},
 		},
 	});
 

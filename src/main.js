@@ -35,8 +35,7 @@ export async function main(args, options = {}) {
 		apiUrl,
 		token,
 		createClient: options.createClient,
-		error: options.error,
-		log: options.log,
+		logger: options.logger,
 		waitForShutdown: options.waitForShutdown,
 	});
 }
@@ -46,31 +45,27 @@ export async function runBot(options = {}) {
 	const token = options.token;
 	const createClient = options.createClient || createBotClient;
 	const waitForShutdown = options.waitForShutdown || waitForProcessShutdown;
-	const log = options.log || console.log;
-	const error = options.error || console.error;
+	const logger = options.logger || console;
 
-	log("Connecting to " + apiUrl + " ...");
+	logger.log?.("Connecting to " + apiUrl + " ...");
 
 
 	const client = createClient(apiUrl, token);
 	const botModel = await client.getBot();
-	const bot = new BotWrapper(botModel, {
-		onError: error,
-		onInfo: log,
-	});
-	log("Authenticated bot " + bot.getFullName() + ".");
+	const bot = new BotWrapper(botModel, { logger });
+	logger.log?.("Authenticated bot " + bot.getFullName() + ".");
 
 	try {
 		const woke = await bot.wakeup();
-		log(woke
+		logger.log?.(woke
 			? bot.getName() + " wakes up."
 			: bot.getName() + " is already awake.");
 
 		const sayMsg = "Hello, world";
 		await bot.say(sayMsg);
-		log(`${bot.getName()} says ,"${sayMsg}"`);
+		logger.log?.(`${bot.getName()} says ,"${sayMsg}"`);
 
-		log("Press Ctrl+C to stop.");
+		logger.log?.("Press Ctrl+C to stop.");
 		await waitForShutdown();
 	} finally {
 		bot.dispose();

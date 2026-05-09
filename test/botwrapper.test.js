@@ -107,7 +107,7 @@ test("BotWrapper exposes bot names and cleans up listeners", () => {
 	const wrapper = new BotWrapper(bot);
 
 	assert.equal(wrapper.getChar(), char);
-	assert.equal(wrapper.getCtrl(), char);
+	assert.equal(wrapper.getControlledChar(), char);
 	assert.equal(wrapper.getName(), 'Ada');
 	assert.equal(wrapper.getFullName(), 'Ada  Lovelace');
 
