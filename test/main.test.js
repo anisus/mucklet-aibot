@@ -8,8 +8,8 @@ test("runBot connects, wakes, greets, and disconnects", async () => {
 	const logs = [];
 	let disconnected = false;
 	const char = {
-		name: 'Ada',
-		surname: 'Lovelace',
+		name: 'Jane',
+		surname: 'Doe',
 		state: 'asleep',
 		call(method, params) {
 			calls.push([ method, params ]);
@@ -57,9 +57,9 @@ test("runBot connects, wakes, greets, and disconnects", async () => {
 	]);
 	assert.deepEqual(logs, [
 		"Connecting to ws://example.test ...",
-		"Authenticated bot Ada Lovelace.",
-		"Ada wakes up.",
-		"Ada says ,\"Hello, world\"",
+		"Authenticated bot Jane Doe.",
+		"Jane wakes up.",
+		"Jane says ,\"Hello, world\"",
 		"Press Ctrl+C to stop.",
 	]);
 });
