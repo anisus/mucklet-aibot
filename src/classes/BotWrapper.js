@@ -6,6 +6,7 @@ export const defaultPingRetry = 1000 * 60 * 1; // 1 minute between retries
 
 /**
  * @typedef {object} BotWrapperOptions
+ * @property {(ev: unknown) => void} [onOut] On out event callback.
  * @property {number} [pingDuration] Ping duration in milliseconds.
  * @property {number} [pingRetry] Ping retry duration in milliseconds after a failed ping.
  * @property {{ log?: (...msgs: unknown[]) => void, error?: (...msgs: unknown[]) => void}} [logger] Logger functions.
@@ -56,6 +57,7 @@ class BotWrapper {
 		this.pingRetry = opts.pingRetry || defaultPingRetry;
 		this.pingTimer = null;
 		this.logger = opts.logger || console;
+		this.onOut = opts.onOut;
 
 		// Bind callbacks
 		this._onBotUnsubscribe = this._onBotUnsubscribe.bind(this);
@@ -125,6 +127,16 @@ class BotWrapper {
 	}
 
 	/**
+	 * Puts a character to sleep and releases the control of a character.
+	 * @param {string} [message] Optional message.
+	 * @returns {Promise<void>} Promise to the controlled character being released.
+	 */
+	async release(message = '') {
+		const ctrl = getControlledOrThrow(this);
+		await ctrl.call('release', message ? { msg: message } : undefined);
+	}
+
+	/**
 	 * Says a message to the room.
 	 * @throws {Err} Throws an error if character is not awake.
 	 * @param {string} msg Message to say.
@@ -172,7 +184,7 @@ class BotWrapper {
 	}
 
 	_onCtrlOut(ev) {
-		this.logger.log?.("Event: ", JSON.stringify(ev));
+		this.onOut?.(ev);
 	}
 
 	/**

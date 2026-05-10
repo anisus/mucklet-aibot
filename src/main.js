@@ -1,9 +1,10 @@
 import { parseCli, printHelp } from './cli.js';
 import { loadConfig } from './utils/config.js';
 import { createBotClient } from './classes/BotClient.js';
-import BotWrapper from './classes/BotWrapper.js';
+import BotController from './classes/BotController.js';
 import { errToString, printError } from './utils/errors.js';
 import { getToken } from './utils/token.js';
+import ShutdownListener from './classes/ShutdownListener.js';
 
 export async function runCli(args) {
 	try {
@@ -44,38 +45,32 @@ export async function runBot(options = {}) {
 	const apiUrl = options.apiUrl;
 	const token = options.token;
 	const createClient = options.createClient || createBotClient;
-	const waitForShutdown = options.waitForShutdown || waitForProcessShutdown;
+	const waitForShutdown = options.waitForShutdown;
 	const logger = options.logger || console;
 
 	logger.log?.("Connecting to " + apiUrl + " ...");
 
-
 	const client = createClient(apiUrl, token);
 	const botModel = await client.getBot();
-	const bot = new BotWrapper(botModel, { logger });
-	logger.log?.("Authenticated bot " + bot.getFullName() + ".");
+	logger.log?.("Authenticated bot " + (botModel.char?.name + ' ' + botModel.char?.surname).trim() + ".");
+	const bot = new BotController(botModel, { logger });
+	const shutdown = !waitForShutdown && new ShutdownListener();
 
 	try {
-		const woke = await bot.wakeup();
-		logger.log?.(woke
-			? bot.getName() + " wakes up."
-			: bot.getName() + " is already awake.");
-
-		const sayMsg = "Hello, world";
-		await bot.say(sayMsg);
-		logger.log?.(`${bot.getName()} says ,"${sayMsg}"`);
-
-		logger.log?.("Press Ctrl+C to stop.");
-		await waitForShutdown();
+		await bot.start();
+		// Wait for either an external shutdown, or if the bot itself stops.
+		await Promise.any([
+			shutdown.waitForShutdown?.() || waitForShutdown(),
+			bot.waitForStop(),
+		]);
 	} finally {
-		bot.dispose();
-		client.disconnect();
+		logger.log?.("Shutting down.");
+		try {
+			await bot.stop();
+		} finally {
+			bot.dispose();
+			shutdown?.dispose();
+			client.disconnect();
+		}
 	}
-}
-
-export function waitForProcessShutdown() {
-	return new Promise(resolve => {
-		process.once('SIGINT', resolve);
-		process.once('SIGTERM', resolve);
-	});
 }

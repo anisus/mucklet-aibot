@@ -5,6 +5,20 @@ const require = createRequire(import.meta.url);
 const resclient = require('resclient');
 const ResClient = resclient.default;
 
+function destroyNativeWebSocketConnection(ws) {
+	if (!ws || ws.readyState == ws.CLOSED) {
+		return;
+	}
+
+	for (const sym of Object.getOwnPropertySymbols(ws)) {
+		const controller = ws[sym];
+		if (typeof controller?.connection?.destroy == 'function') {
+			controller.connection.destroy();
+			return;
+		}
+	}
+}
+
 class BotClient extends ResClient {
 	constructor(apiUrl, token) {
 		super(() => new globalThis.WebSocket(apiUrl));
@@ -15,6 +29,12 @@ class BotClient extends ResClient {
 		}).catch(err => {
 			this.authErr = err;
 		}));
+	}
+
+	disconnect() {
+		const ws = this.ws;
+		super.disconnect();
+		destroyNativeWebSocketConnection(ws);
 	}
 
 	/**
