@@ -5,6 +5,9 @@ export const options = [
 	{ name: 'apiurl', flags: [ 'a' ], type: String, value: 'url', desc: "Realm API WebSocket URL" },
 	{ name: 'token', flags: [ 't' ], type: String, value: 'string', desc: "Bot token generated under Character Settings" },
 	{ name: 'tokenfile', flags: [ 'T' ], type: String, value: 'file', desc: "File containing the bot token" },
+	{ name: 'openaikey', flags: [ 'k' ], type: String, value: 'string', desc: "OpenAI API key" },
+	{ name: 'openaikeyfile', flags: [ 'K' ], type: String, value: 'file', desc: "File containing the OpenAI API key" },
+	{ name: 'charinstructions', flags: [ 'i' ], type: String, value: 'string', desc: "Character roleplay instructions" },
 	{ name: 'help', flags: [ 'h' ], type: Boolean, stop: true, desc: "Show this message" },
 ];
 

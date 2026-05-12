@@ -14,6 +14,10 @@ const config = {
 		 * - --token flag with the token.
 		 */
 	},
+	bot: {
+		/** Additional character roleplay instructions passed to the LLM. */
+		characterInstructions: '',
+	},
 };
 
 export default config;

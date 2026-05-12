@@ -72,6 +72,14 @@ class BotWrapper {
 	}
 
 	/**
+	 * Gets the character id.
+	 * @returns {string} Bot character ID.
+	 */
+	getId() {
+		return this.bot.char?.id || '';
+	}
+
+	/**
 	 * Gets the character model.
 	 * @returns {CtrlModel | null} Bot character.
 	 */
@@ -144,6 +152,16 @@ class BotWrapper {
 	async say(msg) {
 		const ctrl = assertAwake(this.bot);
 		await ctrl.call('say', { msg });
+	}
+
+	/**
+	 * Poses an action to the room.
+	 * @throws {Err} Throws an error if character is not awake.
+	 * @param {string} msg Message to pose
+	 */
+	async pose(msg) {
+		const ctrl = assertAwake(this.bot);
+		await ctrl.call('pose', { msg });
 	}
 
 	/**
