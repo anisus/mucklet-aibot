@@ -28,12 +28,13 @@ export default {
 	},
 	bot: {
 		characterInstructions: 'You cannot speak, but you communicate with expressive beeps.',
+		characterInstructionsFile: '',
 	},
 };
 ```
 
 The API URL may also be passed with `--apiurl`. Character instructions may also
-be passed with `--charinstructions`.
+be passed with `--charinstructions` or read from a file with `--charinstructionsfile`.
 
 ## Run
 
@@ -80,6 +81,7 @@ Options:
 -k, --openaikey <string>  OpenAI API key
 -K, --openaikeyfile <file> File containing the OpenAI API key
 -i, --charinstructions <string> Character roleplay instructions
+-I, --charinstructionsfile <file> File containing character roleplay instructions
 -h, --help                Show help
 ```
 

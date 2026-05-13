@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 import { parseCli, printHelp } from './cli.js';
 import { loadConfig } from './utils/config.js';
 import { createBotClient } from './classes/BotClient.js';
@@ -25,7 +27,12 @@ export async function main(args, options = {}) {
 	const apiUrl = cli.apiurl || cfg.realm?.apiUrl || '';
 	const token = getToken(cli.token, cli.tokenfile);
 	const openaiApiKey = getOpenAIKey(cli.openaikey, cli.openaikeyfile);
-	const characterInstructions = cli.charinstructions || cfg.bot?.characterInstructions || '';
+	const characterInstructions = getCharacterInstructions(
+		cli.charinstructions,
+		cli.charinstructionsfile,
+		cfg.bot?.characterInstructions,
+		cfg.bot?.characterInstructionsFile,
+	);
 
 	if (!token) {
 		throw "missing bot token";
@@ -86,4 +93,29 @@ export async function runBot(options = {}) {
 			api.disconnect();
 		}
 	}
+}
+
+export function getCharacterInstructions(
+	characterInstructions,
+	characterInstructionsFile,
+	configCharacterInstructions,
+	configCharacterInstructionsFile,
+) {
+	if (characterInstructions) {
+		return characterInstructions.trim();
+	}
+	if (characterInstructionsFile) {
+		return readInstructionsFile(characterInstructionsFile);
+	}
+	if (configCharacterInstructions) {
+		return configCharacterInstructions.trim();
+	}
+	if (configCharacterInstructionsFile) {
+		return readInstructionsFile(configCharacterInstructionsFile);
+	}
+	return '';
+}
+
+function readInstructionsFile(file) {
+	return fs.readFileSync(file, 'utf8').trim();
 }
