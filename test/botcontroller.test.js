@@ -60,14 +60,30 @@ test("BotController resolves look tool calls before posing", async () => {
 		openai,
 		logger: {},
 	});
-	controller._lookAtCharacter = async (char) => {
-		lookedAt.push(char.id);
-		return {
-			name: char.name,
-			surname: char.surname,
-			description: "Bert's boots are polished to a mirror shine.",
-		};
-	};
+	controller.addFunction({
+		name: 'look',
+		description: "Gets the public in-character appearance description of a visible character.",
+		instructions: '',
+		parameters: {
+			type: 'object',
+			properties: {
+				charId: {
+					type: 'string',
+					description: "The id of the visible character to inspect.",
+				},
+			},
+			required: [ 'charId' ],
+			additionalProperties: false,
+		},
+		call(_bot, args, context) {
+			lookedAt.push(args.charId);
+			return {
+				name: context.addressedBy.name,
+				surname: context.addressedBy.surname,
+				description: "Bert's boots are polished to a mirror shine.",
+			};
+		},
+	});
 
 	try {
 		await controller._respondToAddress({
