@@ -165,6 +165,16 @@ class BotWrapper {
 	}
 
 	/**
+	 * Looks at a character in the room.
+	 * @throws {Err} Throws an error if character is not awake.
+	 * @param {string | null} charId ID of character to look at or null to stop looking.
+	 */
+	async look(charId) {
+		const ctrl = assertAwake(this.bot);
+		await ctrl.call('look', { charId });
+	}
+
+	/**
 	 * Adds or removes bot listeners.
 	 * @param {boolean} on Adds listeners when true; removes them when false.
 	 */
