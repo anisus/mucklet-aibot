@@ -105,7 +105,7 @@ class BotController {
 		this.responseChain = Promise.resolve();
 		this.functions = [];
 		this.toolMap = {};
-		for (let f of opts.functions || []) {
+		for (let f of opts.functions) {
 			this._addFunction(f);
 		}
 		this.bot = new BotWrapper(bot, { ...opts,
@@ -167,7 +167,7 @@ class BotController {
 	 * @returns {this}
 	 */
 	addFunction(func) {
-		this._addFunction(func);
+		this.functions.push(func);
 		this._createInstructions();
 		return this;
 	}
