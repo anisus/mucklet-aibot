@@ -167,6 +167,23 @@ class BotController {
 			max_output_tokens: defaultMaxOutputTokens,
 			store: true,
 			text: {
+				format: {
+					type: 'json_schema',
+					name: 'pose_response',
+  					description: 'A Mucklet pose response.',
+					schema: {
+						type: 'object',
+						properties: {
+							pose: {
+								type: 'string',
+								description: 'The Mucklet pose message to send.',
+							},
+						},
+						required: [ 'pose' ],
+						additionalProperties: false,
+					},
+					strict: true,
+				},
 				verbosity: 'low',
 			},
 			reasoning: {
@@ -182,7 +199,11 @@ class BotController {
 
 		let response = await client.responses.create(params);
 		this.previousResponseId = response.id || this.previousResponseId;
-		let pose = response.output_text?.trim().replace(/[´’]/g, `'`);
+		let result = JSON.parse(response.output_text || '{}');
+
+		this.logger.log?.(JSON.stringify(result, null, 2));
+
+		let pose = typeof result.pose == 'string' ? result.pose.trim().replace(/[\u00b4\u2019]/g, "'") : '';
 		let botName = this.bot.getName();
 		if (pose?.startsWith(botName + ' ') || pose?.startsWith(botName + "'")) {
 			pose = pose.slice(botName.length).trim();
@@ -190,7 +211,7 @@ class BotController {
 		if (pose) {
 			await this.bot.pose(pose);
 		} else {
-			await this.bot.pose("derped: " + JSON.stringify(response));
+			await this.bot.pose("derped.");
 		}
 	}
 
