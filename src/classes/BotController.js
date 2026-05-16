@@ -96,6 +96,7 @@ In input message, only use ((ooc)) formatted text silently information not kno, 
 /**
  * @typedef {object} BotAddon
  * @property {string} [name] Addon name.
+ * @property {(context: BotAddonContext) => void} [init] Init function called once when addon is registered.
  * @property {BotFunction[] | ((context: BotAddonContext) => BotFunction[])} [functions] Bot functions added by the addon.
  * @property {string | ((context: BotAddonContext) => string)} [instructions] Extra response instructions.
  * @property {(ev: any, context: BotAddonContext) => void | false | Promise<void | false>} [onOut] Handles room output events. Return false to skip default handling.
@@ -238,8 +239,12 @@ class BotController {
 
 		this.addons.push(addon);
 
+		let context = this._getAddonContext();
+
+		addon.init?.(context);
+
 		const functions = typeof addon.functions == 'function'
-			? addon.functions(this._getAddonContext())
+			? addon.functions(context)
 			: addon.functions || [];
 		for (let f of functions) {
 			this._addFunction(f);

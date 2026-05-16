@@ -171,7 +171,7 @@ class BotWrapper {
 	 */
 	async look(charId) {
 		const ctrl = assertAwake(this.bot);
-		await ctrl.call('look', { charId });
+		await ctrl.call('look', charId ? { charId } : { charId: ctrl.id });
 	}
 
 	/**
