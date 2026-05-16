@@ -7,7 +7,7 @@ import BotController from './classes/BotController.js';
 import { errToString, printError } from './utils/errors.js';
 import { getOpenAIKey, getToken } from './utils/token.js';
 import ShutdownListener from './classes/ShutdownListener.js';
-import BotFunctionLook from './classes/BotFunctionLook.js';
+import BotAddonLook from './classes/BotAddonLook.js';
 
 export async function runCli(args) {
 	try {
@@ -78,8 +78,8 @@ export async function runBot(options = {}) {
 		logger,
 		openaiApiKey,
 		characterInstructions,
-		functions: [
-			new BotFunctionLook({ logger }),
+		addons: [
+			new BotAddonLook({ logger }),
 		],
 	});
 	const shutdown = !waitForShutdown && new ShutdownListener();
