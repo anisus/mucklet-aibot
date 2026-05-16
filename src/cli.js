@@ -9,6 +9,7 @@ export const options = [
 	{ name: 'openaikeyfile', flags: [ 'K' ], type: String, value: 'file', desc: "File containing the OpenAI API key" },
 	{ name: 'charinstructions', flags: [ 'i' ], type: String, value: 'string', desc: "Character roleplay instructions" },
 	{ name: 'charinstructionsfile', flags: [ 'I' ], type: String, value: 'file', desc: "File containing character roleplay instructions" },
+	{ name: 'admin', type: String, multiple: true, value: 'charId', desc: "Administrator character ID allowed to use admin commands" },
 	{ name: 'help', flags: [ 'h' ], type: Boolean, stop: true, desc: "Show this message" },
 ];
 

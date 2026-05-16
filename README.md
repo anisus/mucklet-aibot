@@ -29,17 +29,29 @@ export default {
 	bot: {
 		characterInstructions: 'You cannot speak, but you communicate with expressive beeps.',
 		characterInstructionsFile: '',
+		admins: [
+			'admin-character-id',
+		],
 	},
 };
 ```
 
 The API URL may also be passed with `--apiurl`. Character instructions may also
 be passed with `--charinstructions` or read from a file with `--charinstructionsfile`.
+Administrator characters allowed to use admin commands may be configured with
+`bot.admins` or added with one or more `--admin=<CHARACTER_ID>` flags.
 
 ## Run
 
 ```text
 node index.js --token=<BOT_TOKEN> --openaikey=<OPENAI_API_KEY>
+```
+
+To allow one or more characters to use admin commands such as `sleep`, pass
+their character IDs:
+
+```text
+node index.js --token=<BOT_TOKEN> --openaikey=<OPENAI_API_KEY> --admin=<CHARACTER_ID>
 ```
 
 or:
@@ -82,6 +94,7 @@ Options:
 -K, --openaikeyfile <file> File containing the OpenAI API key
 -i, --charinstructions <string> Character roleplay instructions
 -I, --charinstructionsfile <file> File containing character roleplay instructions
+--admin <charId>        Administrator character ID allowed to use admin commands
 -h, --help                Show help
 ```
 

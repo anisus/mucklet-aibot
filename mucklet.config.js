@@ -17,6 +17,9 @@ const config = {
 	bot: {
 		/** Additional character roleplay instructions passed to the LLM. */
 		characterInstructions: '',
+
+		/** Character IDs allowed to use admin commands such as "sleep". */
+		admins: [],
 	},
 };
 

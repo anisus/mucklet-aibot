@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { getCharacterInstructions } from '../src/main.js';
+import { getAdmins, getCharacterInstructions } from '../src/main.js';
 
 test("getCharacterInstructions prefers CLI text over files and config", () => {
 	assert.equal(
@@ -43,5 +43,12 @@ test("getCharacterInstructions reads config file as fallback", () => {
 	assert.equal(
 		getCharacterInstructions('', '', '', instructionsFile),
 		"Config file instructions",
+	);
+});
+
+test("getAdmins merges config and CLI admins", () => {
+	assert.deepEqual(
+		getAdmins([ ' cli-admin ', 'shared-admin' ], [ 'config-admin', 'shared-admin', '' ]),
+		[ 'config-admin', 'shared-admin', 'cli-admin' ],
 	);
 });

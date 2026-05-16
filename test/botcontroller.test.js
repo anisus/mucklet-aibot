@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import BotAddonSleep from '../src/classes/BotAddonSleep.js';
 import BotController from '../src/classes/BotController.js';
 
 test("BotController resolves look tool calls before posing", async () => {
@@ -220,6 +221,91 @@ test("BotController accepts addons with functions, instructions, and pose hooks"
 		[ 'char.call', 'pose', { msg: "smiles. quietly." }],
 	]);
 	assert.equal(disposed, true);
+});
+
+test("BotAddonSleep stops the controller on sleep output", async () => {
+	const calls = [];
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const api = {
+		get(rid) {
+			calls.push([ 'api.get', rid ]);
+			return Promise.resolve(createChar(calls));
+		},
+	};
+	const controller = new BotController(api, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		logger: {},
+		admins: [ 'other-char' ],
+		addons: [ new BotAddonSleep() ],
+	});
+	controller.started = true;
+
+	try {
+		controller._onOut({
+			msg: 'sleep',
+			type: 'address',
+			char: { id: 'other-char' },
+		});
+		await controller.responseChain;
+	} finally {
+		controller.dispose();
+	}
+
+	assert.equal(controller.started, false);
+	assert.deepEqual(calls, [
+		[ 'char.call', 'ping', undefined ],
+		[ 'char.call', 'release', undefined ],
+	]);
+});
+
+test("BotAddonSleep ignores sleep output from non-admin characters", async () => {
+	const calls = [];
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const api = {
+		get(rid) {
+			calls.push([ 'api.get', rid ]);
+			return Promise.resolve(createChar(calls));
+		},
+	};
+	const controller = new BotController(api, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		logger: {},
+		admins: [ 'admin-char' ],
+		addons: [ new BotAddonSleep() ],
+	});
+	controller.started = true;
+
+	try {
+		controller._onOut({
+			msg: 'sleep',
+			type: 'address',
+			char: { id: 'other-char' },
+		});
+		await controller.responseChain;
+	} finally {
+		controller.dispose();
+	}
+
+	assert.equal(controller.started, true);
+	assert.deepEqual(calls, [
+		[ 'char.call', 'ping', undefined ],
+	]);
 });
 
 function createChar(calls, options = {}) {

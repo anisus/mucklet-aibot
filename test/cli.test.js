@@ -10,8 +10,11 @@ test("parseCli parses public option names", () => {
 		'--openaikeyfile=openai-key.txt',
 		'--charinstructions=Stay quiet.',
 		'--charinstructionsfile=character.txt',
+		'--admin=char-one',
+		'--admin=char-two',
 	]), {
 		_: [],
+		admin: [ 'char-one', 'char-two' ],
 		apiurl: 'wss://example.test',
 		charinstructions: 'Stay quiet.',
 		charinstructionsfile: 'character.txt',

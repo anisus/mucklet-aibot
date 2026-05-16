@@ -80,6 +80,7 @@ In input message, only use ((ooc)) formatted text silently information not kno, 
  * @property {BotController} controller Bot controller.
  * @property {BotWrapper} bot Bot wrapper.
  * @property {object} api Realm API client.
+ * @property {string[]} admins Administrator character IDs.
  * @property {{ log?: (...msgs: unknown[]) => void, error?: (...msgs: unknown[]) => void}} logger Logger functions.
  */
 
@@ -111,6 +112,7 @@ In input message, only use ((ooc)) formatted text silently information not kno, 
  * @property {string} [openaiApiKey] OpenAI API Key. Ignored if openai is set.
  * @property {string} [openaiModel] OpenAI model.
  * @property {string} [characterInstructions] Additional character instructions.
+ * @property {string[]} [admins] Administrator character IDs.
  * @property {BotFunction[]} [functions] Bot functions.
  * @property {BotAddon[]} [addons] Bot addons.
  */
@@ -130,6 +132,7 @@ class BotController {
 		this.openaiApiKey = opts.openaiApiKey || '';
 		this.openaiModel = opts.openaiModel || process.env.OPENAI_MODEL || defaultOpenAIModel;
 		this.characterInstructions = opts.characterInstructions || '';
+		this.admins = opts.admins || [];
 		this.previousResponseId = null;
 		this.responseChain = Promise.resolve();
 		this.addons = [];
@@ -261,6 +264,7 @@ class BotController {
 			controller: this,
 			bot: this.bot,
 			api: this.api,
+			admins: this.admins,
 			logger: this.logger,
 		};
 	}
@@ -270,7 +274,7 @@ class BotController {
 	 * @param {any} ev Event object.
 	 */
 	_onOut(ev) {
-		this.logger?.log("CtrlEvent: ", JSON.stringify(ev));
+		this.logger.log?.("CtrlEvent: ", JSON.stringify(ev));
 		this.responseChain = this.responseChain.then(async () => {
 			for (let addon of this.addons) {
 				if (await addon.onOut?.(ev, this._getAddonContext()) === false) {
@@ -285,11 +289,6 @@ class BotController {
 	}
 
 	_handleOut(ev) {
-		if (ev.msg == 'sleep') {
-			this.stop();
-			return;
-		}
-
 		if (ev.type == 'address' && ev.char.id != this.bot.getId()) {
 			return this._respondToAddress(ev);
 		}

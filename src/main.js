@@ -8,6 +8,7 @@ import { errToString, printError } from './utils/errors.js';
 import { getOpenAIKey, getToken } from './utils/token.js';
 import ShutdownListener from './classes/ShutdownListener.js';
 import BotAddonLook from './classes/BotAddonLook.js';
+import BotAddonSleep from './classes/BotAddonSleep.js';
 
 export async function runCli(args) {
 	try {
@@ -28,6 +29,7 @@ export async function main(args, options = {}) {
 	const apiUrl = cli.apiurl || cfg.realm?.apiUrl || '';
 	const token = getToken(cli.token, cli.tokenfile);
 	const openaiApiKey = getOpenAIKey(cli.openaikey, cli.openaikeyfile);
+	const admins = getAdmins(cli.admin, cfg.bot?.admins);
 	const characterInstructions = getCharacterInstructions(
 		cli.charinstructions,
 		cli.charinstructionsfile,
@@ -49,6 +51,7 @@ export async function main(args, options = {}) {
 		apiUrl,
 		token,
 		openaiApiKey,
+		admins,
 		characterInstructions,
 		createClient: options.createClient,
 		logger: options.logger,
@@ -60,6 +63,7 @@ export async function runBot(options = {}) {
 	const apiUrl = options.apiUrl;
 	const token = options.token;
 	const openaiApiKey = options.openaiApiKey;
+	const admins = options.admins || [];
 	const characterInstructions = options.characterInstructions || '';
 	const createClient = options.createClient || createBotClient;
 	const waitForShutdown = options.waitForShutdown;
@@ -77,8 +81,10 @@ export async function runBot(options = {}) {
 	const bot = new BotController(api, botModel, {
 		logger,
 		openaiApiKey,
+		admins,
 		characterInstructions,
 		addons: [
+			new BotAddonSleep(),
 			new BotAddonLook(),
 		],
 	});
@@ -122,6 +128,13 @@ export function getCharacterInstructions(
 		return readInstructionsFile(configCharacterInstructionsFile);
 	}
 	return '';
+}
+
+export function getAdmins(cliAdmins, configAdmins) {
+	return [ ...(configAdmins || []), ...(cliAdmins || []) ]
+		.map(id => String(id).trim())
+		.filter(Boolean)
+		.filter((id, idx, arr) => arr.indexOf(id) == idx);
 }
 
 function readInstructionsFile(file) {
