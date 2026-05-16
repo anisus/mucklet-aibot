@@ -79,7 +79,7 @@ export async function runBot(options = {}) {
 		openaiApiKey,
 		characterInstructions,
 		addons: [
-			new BotAddonLook({ logger }),
+			new BotAddonLook(),
 		],
 	});
 	const shutdown = !waitForShutdown && new ShutdownListener();

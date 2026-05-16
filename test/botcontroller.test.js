@@ -171,8 +171,14 @@ test("BotController accepts addons with functions, instructions, and pose hooks"
 				},
 			},
 		],
-		beforePose(pose) {
-			return pose + " quietly.";
+		beforeRespond(context) {
+			context.params.max_output_tokens = 256;
+			context.params.metadata = {
+				addon: 'test-addon',
+			};
+		},
+		beforePose(result) {
+			result.pose += " quietly.";
 		},
 		dispose() {
 			disposed = true;
@@ -202,6 +208,10 @@ test("BotController accepts addons with functions, instructions, and pose hooks"
 
 	assert.equal(requests.length, 1);
 	assert.equal(requests[0].tools[0].name, 'noop');
+	assert.equal(requests[0].max_output_tokens, 256);
+	assert.deepEqual(requests[0].metadata, {
+		addon: 'test-addon',
+	});
 	assert.match(requests[0].instructions, /Function instruction\./);
 	assert.match(requests[0].instructions, /Addon instruction\./);
 	assert.deepEqual(calls, [

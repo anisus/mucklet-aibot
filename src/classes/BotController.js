@@ -89,6 +89,7 @@ In input message, only use ((ooc)) formatted text silently information not kno, 
  * @property {any} event Room output event.
  * @property {any} addressedBy Character addressing the bot.
  * @property {any} controlledCharacter Controlled bot character.
+ * @property {object} params Responses create params.
  */
 
 /**
@@ -98,7 +99,7 @@ In input message, only use ((ooc)) formatted text silently information not kno, 
  * @property {string | ((context: BotAddonContext) => string)} [instructions] Extra response instructions.
  * @property {(ev: any, context: BotAddonContext) => void | false | Promise<void | false>} [onOut] Handles room output events. Return false to skip default handling.
  * @property {(context: BotRespondContext) => void | Promise<void>} [beforeRespond] Called before requesting a response.
- * @property {(pose: string, context: BotRespondContext) => string | Promise<string>} [beforePose] Called before posing a response.
+ * @property {(result: { pose: string }, context: BotRespondContext) => void | Promise<void>} [beforePose] Called before posing a response.
  * @property {() => void} [dispose] Disposes the addon.
  */
 
@@ -308,16 +309,6 @@ class BotController {
 			: char.name + ' says, "' + ev.msg + '"';
 
 		let ctrl = this.bot.getControlledChar();
-		const respondContext = {
-			...this._getAddonContext(),
-			event: ev,
-			addressedBy: char,
-			controlledCharacter: ctrl,
-		};
-
-		for (let addon of this.addons) {
-			await addon.beforeRespond?.(respondContext);
-		}
 
 		this.logger.log?.("Instructions:\n" + this.instructions);
 
@@ -382,8 +373,22 @@ class BotController {
 			params.previous_response_id = this.previousResponseId;
 		}
 
-		let response = await client.responses.create(params);
-		response = await this._resolveToolCalls(client, params, response, {
+		const respondContext = {
+			...this._getAddonContext(),
+			event: ev,
+			addressedBy: char,
+			controlledCharacter: ctrl,
+			params,
+		};
+
+		// Call addons and let them update params if needed.
+		for (let addon of this.addons) {
+			await addon.beforeRespond?.(respondContext);
+		}
+
+		// Make responses call
+		let response = await client.responses.create(respondContext.params);
+		response = await this._resolveToolCalls(client, respondContext.params, response, {
 			addressedBy: char,
 		});
 		this.previousResponseId = response.id || this.previousResponseId;
