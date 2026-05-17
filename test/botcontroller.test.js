@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import BotAddonLook from '../src/classes/BotAddonLook.js';
 import BotAddonSleep from '../src/classes/BotAddonSleep.js';
 import BotController from '../src/classes/BotController.js';
 
@@ -118,6 +119,169 @@ test("BotController resolves look tool calls before posing", async () => {
 		[ 'char.call', 'ping', undefined ],
 		[ 'api.get', 'core.char.other-char' ],
 		[ 'char.call', 'pose', { msg: "nods at the polished boots." }],
+	]);
+});
+
+test("BotAddonLook adds addressedBy description on first input from each character", async () => {
+	const calls = [];
+	const requests = [];
+	const characters = {
+		'other-char': createChar(calls, {
+			id: 'other-char',
+			name: 'Bert',
+			surname: 'Example',
+			desc: "Bert wears a red coat.",
+		}),
+		'third-char': createChar(calls, {
+			id: 'third-char',
+			name: 'Cora',
+			surname: 'Example',
+			desc: "Cora has a blue scarf.",
+		}),
+	};
+	let controlled;
+	controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+		desc: "Ada wears a brass-buttoned coat.",
+		onCall(method, params) {
+			if (method == 'look') {
+				controlled.lookingAt = params.charId == controlled.id
+					? null
+					: {
+						charId: params.charId,
+						char: characters[params.charId],
+					};
+			}
+		},
+	});
+	const api = {
+		get(rid) {
+			calls.push([ 'api.get', rid ]);
+			return Promise.resolve(characters[rid.slice('core.char.'.length)]);
+		},
+	};
+	const openai = {
+		responses: {
+			create(params) {
+				requests.push(params);
+				return Promise.resolve({
+					id: 'rsp_' + requests.length,
+					output_text: JSON.stringify({ pose: "Ada smiles." }),
+					output: [],
+				});
+			},
+		},
+	};
+	const controller = new BotController(api, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		openai,
+		logger: {},
+		addons: [ new BotAddonLook() ],
+	});
+
+	try {
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Hello.",
+			pose: false,
+		});
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Still here.",
+			pose: false,
+		});
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'third-char', name: 'Cora', surname: 'Example' },
+			msg: "Hello.",
+			pose: false,
+		});
+	} finally {
+		controller.dispose();
+	}
+
+	assert.equal(requests.length, 3);
+	assert.equal(JSON.parse(requests[0].input).addressedBy.description, "Bert wears a red coat.");
+	assert.equal(Object.hasOwn(JSON.parse(requests[1].input).addressedBy, 'description'), false);
+	assert.equal(JSON.parse(requests[2].input).addressedBy.description, "Cora has a blue scarf.");
+	assert.deepEqual(calls.filter(([ type, method ]) => type == 'char.call' && method == 'look'), [
+		[ 'char.call', 'look', { charId: 'other-char' }],
+		[ 'char.call', 'look', { charId: 'third-char' }],
+	]);
+});
+
+test("BotAddonLook keeps responding with empty addressedBy description when first look fails", async () => {
+	const calls = [];
+	const requests = [];
+	const addressedBy = createChar(calls, {
+		id: 'other-char',
+		name: 'Bert',
+		surname: 'Example',
+		desc: "Bert wears a red coat.",
+	});
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+		desc: "Ada wears a brass-buttoned coat.",
+		onCall(method) {
+			if (method == 'look') {
+				throw new Error("look failed");
+			}
+		},
+	});
+	const api = {
+		get(rid) {
+			calls.push([ 'api.get', rid ]);
+			return Promise.resolve(addressedBy);
+		},
+	};
+	const openai = {
+		responses: {
+			create(params) {
+				requests.push(params);
+				return Promise.resolve({
+					id: 'rsp_1',
+					output_text: JSON.stringify({ pose: "Ada smiles." }),
+					output: [],
+				});
+			},
+		},
+	};
+	const controller = new BotController(api, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		openai,
+		logger: {},
+		addons: [ new BotAddonLook() ],
+	});
+
+	try {
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Hello.",
+			pose: false,
+		});
+	} finally {
+		controller.dispose();
+	}
+
+	assert.equal(requests.length, 1);
+	assert.equal(JSON.parse(requests[0].input).addressedBy.description, '');
+	assert.deepEqual(calls.filter(([ type, method ]) => type == 'char.call' && method == 'look'), [
+		[ 'char.call', 'look', { charId: 'other-char' }],
 	]);
 });
 
@@ -320,6 +484,7 @@ function createChar(calls, options = {}) {
 		state: options.state || 'awake',
 		call(method, params) {
 			calls.push([ 'char.call', method, params ]);
+			options.onCall?.(method, params);
 			return Promise.resolve();
 		},
 	};
