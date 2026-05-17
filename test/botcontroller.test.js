@@ -625,6 +625,79 @@ test("BotAddonMemory summarizes tracked characters before reset", async () => {
 	assert.equal(controller.previousResponseId, null);
 });
 
+test("BotAddonMemory summarizes tracked characters before stop", async () => {
+	const calls = [];
+	const requests = [];
+	const memoryDir = makeTempDir();
+	fs.writeFileSync(path.join(memoryDir, 'other-char.txt'), "Bert already trusts Ada.\n", 'utf8');
+	const addressedBy = createChar(calls, {
+		id: 'other-char',
+		name: 'Bert',
+		surname: 'Example',
+	});
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const api = {
+		get(rid) {
+			calls.push([ 'api.get', rid ]);
+			return Promise.resolve(addressedBy);
+		},
+	};
+	const openai = {
+		responses: {
+			create(params) {
+				requests.push(params);
+				if (params.instructions?.startsWith('Create a concise private memory')) {
+					return Promise.resolve({
+						id: 'summary_1',
+						output_text: "Bert remembers Ada before sleep.",
+						output: [],
+					});
+				}
+
+				return Promise.resolve({
+					id: 'rsp_1',
+					output_text: JSON.stringify({ pose: "Ada smiles." }),
+					output: [],
+				});
+			},
+		},
+	};
+	const controller = createBotController(api, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		openai,
+		logger: {},
+		addons: [ new BotAddonMemory({ memoryDir }) ],
+	});
+	controller.started = true;
+
+	try {
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Hello.",
+			pose: false,
+		});
+		await controller.stop();
+	} finally {
+		controller.dispose();
+	}
+
+	const summaryRequests = requests.filter(params => params.instructions?.startsWith('Create a concise private memory'));
+	assert.equal(summaryRequests.length, 1);
+	assert.equal(summaryRequests[0].previous_response_id, 'rsp_1');
+	assert.equal(JSON.parse(summaryRequests[0].input).existingMemory, "Bert already trusts Ada.");
+	assert.equal(fs.readFileSync(path.join(memoryDir, 'other-char.txt'), 'utf8'), "Bert remembers Ada before sleep.\n");
+	assert.equal(controller.started, false);
+});
+
 test("BotAddonMemory leaves existing memory unchanged on empty summary", async () => {
 	const calls = [];
 	const requests = [];

@@ -106,6 +106,7 @@ In input message, only use ((ooc)) formatted text silently information not kno, 
  * @property {(ev: any, context: BotAddonContext) => void | false | Promise<void | false>} [onOut] Handles room output events. Return false to skip default handling.
  * @property {(context: BotRespondContext) => void | Promise<void>} [beforeRespond] Called before requesting a response.
  * @property {(result: { pose: string }, context: BotRespondContext) => void | Promise<void>} [beforePose] Called before posing a response.
+ * @property {(context: BotAddonContext) => void | Promise<void>} [beforeStop] Called before stopping the controller.
  * @property {(context: BotAddonContext) => void | Promise<void>} [beforeReset] Called before clearing the response chain.
  * @property {(context: BotAddonContext) => void | Promise<void>} [afterReset] Called after clearing the response chain.
  * @property {() => void} [dispose] Disposes the addon.
@@ -186,7 +187,32 @@ class BotController {
 		if (!this.started) {
 			return;
 		}
+
+		if (responseChainContext.getStore() === this) {
+			await this._stop();
+			return;
+		}
+
+		const stopPromise = this.responseChain.then(() => (
+			responseChainContext.run(this, () => this._stop())
+		));
+		this.responseChain = stopPromise.catch((err) => {
+			this.logger.error?.("error stopping controller: ", err);
+		});
+		await stopPromise;
+	}
+
+	async _stop() {
 		try {
+			const context = this._getAddonContext();
+			for (let addon of this.addons) {
+				try {
+					await addon.beforeStop?.(context);
+				} catch (err) {
+					this.logger.error?.("error before stopping controller: ", err);
+				}
+			}
+
 			await this.bot.release(this.opts?.sleepMessage);
 		} finally {
 			this.started = false;

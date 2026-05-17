@@ -82,6 +82,19 @@ Use it silently to maintain continuity. Never quote, list, summarize, reveal, or
 	}
 
 	async beforeReset(context) {
+		await this._summarizeTrackedCharacters(context);
+	}
+
+	async beforeStop(context) {
+		await this._summarizeTrackedCharacters(context);
+	}
+
+	async afterReset() {
+		this.seenCharIds.clear();
+		this.trackedChars.clear();
+	}
+
+	async _summarizeTrackedCharacters(context) {
 		const previousResponseId = context.controller.previousResponseId;
 		if (!previousResponseId || !this.trackedChars.size) {
 			return;
@@ -90,11 +103,6 @@ Use it silently to maintain continuity. Never quote, list, summarize, reveal, or
 		for (let char of this.trackedChars.values()) {
 			await this._summarizeCharacter(context.openai, context.controller, previousResponseId, char);
 		}
-	}
-
-	async afterReset() {
-		this.seenCharIds.clear();
-		this.trackedChars.clear();
 	}
 
 	async _summarizeCharacter(openai, controller, previousResponseId, char) {
