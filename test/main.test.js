@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { getAdmins, getCharacterInstructions } from '../src/main.js';
+import { getAdmins, getCharacterInstructions, getMemoryDir } from '../src/main.js';
 
 test("getCharacterInstructions prefers CLI text over files and config", () => {
 	assert.equal(
@@ -51,4 +51,10 @@ test("getAdmins merges config and CLI admins", () => {
 		getAdmins([ ' cli-admin ', 'shared-admin' ], [ 'config-admin', 'shared-admin', '' ]),
 		[ 'config-admin', 'shared-admin', 'cli-admin' ],
 	);
+});
+
+test("getMemoryDir prefers CLI over config over default", () => {
+	assert.equal(getMemoryDir('cli-memory', 'config-memory'), 'cli-memory');
+	assert.equal(getMemoryDir('', 'config-memory'), 'config-memory');
+	assert.equal(getMemoryDir('', ''), 'memory');
 });

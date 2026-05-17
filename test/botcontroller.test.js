@@ -1,10 +1,43 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import BotAddonLook from '../src/classes/BotAddonLook.js';
+import BotAddonMemory from '../src/classes/BotAddonMemory.js';
 import BotAddonReset from '../src/classes/BotAddonReset.js';
 import BotAddonSleep from '../src/classes/BotAddonSleep.js';
 import BotController from '../src/classes/BotController.js';
+
+test("BotController requires an OpenAI API key or client", () => {
+	const calls = [];
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+
+	assert.throws(() => new BotController({}, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		logger: {},
+	}), /missing OpenAI API key/);
+
+	const controller = new BotController({}, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		openai: createUnusedOpenAI(),
+		logger: {},
+	});
+	controller.dispose();
+});
 
 test("BotController resolves look tool calls before posing", async () => {
 	const calls = [];
@@ -54,7 +87,7 @@ test("BotController resolves look tool calls before posing", async () => {
 			},
 		},
 	};
-	const controller = new BotController(api, {
+	const controller = createBotController(api, {
 		char: controlled,
 		controlled,
 		on() {},
@@ -175,7 +208,7 @@ test("BotAddonLook adds addressedBy description on first input from each charact
 			},
 		},
 	};
-	const controller = new BotController(api, {
+	const controller = createBotController(api, {
 		char: controlled,
 		controlled,
 		on() {},
@@ -261,7 +294,7 @@ test("BotAddonLook adds addressedBy description again after response chain reset
 			},
 		},
 	};
-	const controller = new BotController(api, {
+	const controller = createBotController(api, {
 		char: controlled,
 		controlled,
 		on() {},
@@ -343,7 +376,7 @@ test("BotAddonLook keeps responding with empty addressedBy description when firs
 			},
 		},
 	};
-	const controller = new BotController(api, {
+	const controller = createBotController(api, {
 		char: controlled,
 		controlled,
 		on() {},
@@ -370,6 +403,367 @@ test("BotAddonLook keeps responding with empty addressedBy description when firs
 	assert.deepEqual(calls.filter(([ type, method ]) => type == 'char.call' && method == 'look'), [
 		[ 'char.call', 'look', { charId: 'other-char' }],
 	]);
+});
+
+test("BotAddonMemory adds addressedBy memory on first input from each character", async () => {
+	const calls = [];
+	const requests = [];
+	const memoryDir = makeTempDir();
+	fs.writeFileSync(path.join(memoryDir, 'other-char.txt'), "Bert met Ada near the market.\n", 'utf8');
+	const addressedBy = createChar(calls, {
+		id: 'other-char',
+		name: 'Bert',
+		surname: 'Example',
+	});
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const api = {
+		get(rid) {
+			calls.push([ 'api.get', rid ]);
+			return Promise.resolve(addressedBy);
+		},
+	};
+	const openai = {
+		responses: {
+			create(params) {
+				requests.push(params);
+				return Promise.resolve({
+					id: 'rsp_' + requests.length,
+					output_text: JSON.stringify({ pose: "Ada smiles." }),
+					output: [],
+				});
+			},
+		},
+	};
+	const memory = new BotAddonMemory({ memoryDir });
+	const controller = createBotController(api, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		openai,
+		logger: {},
+		addons: [ memory ],
+	});
+
+	try {
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Hello.",
+			pose: false,
+		});
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Still here.",
+			pose: false,
+		});
+		await memory.afterReset();
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Back again.",
+			pose: false,
+		});
+	} finally {
+		controller.dispose();
+	}
+
+	assert.equal(requests.length, 3);
+	assert.equal(JSON.parse(requests[0].input).addressedBy.memory, "Bert met Ada near the market.");
+	assert.equal(Object.hasOwn(JSON.parse(requests[1].input).addressedBy, 'memory'), false);
+	assert.equal(JSON.parse(requests[2].input).addressedBy.memory, "Bert met Ada near the market.");
+});
+
+test("BotAddonMemory skips missing memory files", async () => {
+	const calls = [];
+	const requests = [];
+	const memoryDir = makeTempDir();
+	const addressedBy = createChar(calls, {
+		id: 'other-char',
+		name: 'Bert',
+		surname: 'Example',
+	});
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const api = {
+		get(rid) {
+			calls.push([ 'api.get', rid ]);
+			return Promise.resolve(addressedBy);
+		},
+	};
+	const openai = {
+		responses: {
+			create(params) {
+				requests.push(params);
+				return Promise.resolve({
+					id: 'rsp_1',
+					output_text: JSON.stringify({ pose: "Ada smiles." }),
+					output: [],
+				});
+			},
+		},
+	};
+	const controller = createBotController(api, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		openai,
+		logger: {},
+		addons: [ new BotAddonMemory({ memoryDir }) ],
+	});
+
+	try {
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Hello.",
+			pose: false,
+		});
+	} finally {
+		controller.dispose();
+	}
+
+	assert.equal(requests.length, 1);
+	assert.equal(Object.hasOwn(JSON.parse(requests[0].input).addressedBy, 'memory'), false);
+});
+
+test("BotAddonMemory summarizes tracked characters before reset", async () => {
+	const calls = [];
+	const requests = [];
+	const memoryDir = makeTempDir();
+	fs.writeFileSync(path.join(memoryDir, 'other-char.txt'), "Bert already trusts Ada.\n", 'utf8');
+	const characters = {
+		'other-char': createChar(calls, {
+			id: 'other-char',
+			name: 'Bert',
+			surname: 'Example',
+		}),
+		'third-char': createChar(calls, {
+			id: 'third-char',
+			name: 'Cora',
+			surname: 'Example',
+		}),
+	};
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const api = {
+		get(rid) {
+			calls.push([ 'api.get', rid ]);
+			return Promise.resolve(characters[rid.slice('core.char.'.length)]);
+		},
+	};
+	const openai = {
+		responses: {
+			create(params) {
+				requests.push(params);
+				if (params.instructions?.startsWith('Create a concise private memory')) {
+					const input = JSON.parse(params.input);
+					return Promise.resolve({
+						id: 'summary_' + input.character.id,
+						output_text: input.character.name + " remembers the conversation.",
+						output: [],
+					});
+				}
+
+				return Promise.resolve({
+					id: 'rsp_' + requests.length,
+					output_text: JSON.stringify({ pose: "Ada smiles." }),
+					output: [],
+				});
+			},
+		},
+	};
+	const controller = createBotController(api, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		openai,
+		logger: {},
+		addons: [ new BotAddonMemory({ memoryDir }) ],
+	});
+
+	try {
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Hello.",
+			pose: false,
+		});
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'third-char', name: 'Cora', surname: 'Example' },
+			msg: "Hello.",
+			pose: false,
+		});
+		await controller.reset();
+	} finally {
+		controller.dispose();
+	}
+
+	const summaryRequests = requests.filter(params => params.instructions?.startsWith('Create a concise private memory'));
+	assert.equal(summaryRequests.length, 2);
+	assert.deepEqual(summaryRequests.map(params => params.previous_response_id), [ 'rsp_2', 'rsp_2' ]);
+	assert.equal(JSON.parse(summaryRequests[0].input).existingMemory, "Bert already trusts Ada.");
+	assert.equal(fs.readFileSync(path.join(memoryDir, 'other-char.txt'), 'utf8'), "Bert remembers the conversation.\n");
+	assert.equal(fs.readFileSync(path.join(memoryDir, 'third-char.txt'), 'utf8'), "Cora remembers the conversation.\n");
+	assert.equal(controller.previousResponseId, null);
+});
+
+test("BotAddonMemory leaves existing memory unchanged on empty summary", async () => {
+	const calls = [];
+	const requests = [];
+	const errors = [];
+	const memoryDir = makeTempDir();
+	fs.writeFileSync(path.join(memoryDir, 'other-char.txt'), "Bert already trusts Ada.\n", 'utf8');
+	const addressedBy = createChar(calls, {
+		id: 'other-char',
+		name: 'Bert',
+		surname: 'Example',
+	});
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const api = {
+		get(rid) {
+			calls.push([ 'api.get', rid ]);
+			return Promise.resolve(addressedBy);
+		},
+	};
+	const openai = {
+		responses: {
+			create(params) {
+				requests.push(params);
+				if (params.instructions?.startsWith('Create a concise private memory')) {
+					return Promise.resolve({
+						id: 'summary_1',
+						output_text: '  ',
+						output: [],
+					});
+				}
+
+				return Promise.resolve({
+					id: 'rsp_1',
+					output_text: JSON.stringify({ pose: "Ada smiles." }),
+					output: [],
+				});
+			},
+		},
+	};
+	const controller = createBotController(api, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		openai,
+		logger: {
+			error(...msgs) {
+				errors.push(msgs);
+			},
+		},
+		addons: [ new BotAddonMemory({ memoryDir }) ],
+	});
+
+	try {
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Hello.",
+			pose: false,
+		});
+		await controller.reset();
+	} finally {
+		controller.dispose();
+	}
+
+	assert.equal(fs.readFileSync(path.join(memoryDir, 'other-char.txt'), 'utf8'), "Bert already trusts Ada.\n");
+	assert.equal(errors.length, 1);
+	assert.match(errors[0][0], /empty memory summary/);
+});
+
+test("BotAddonMemory skips unsafe character IDs", async () => {
+	const calls = [];
+	const requests = [];
+	const errors = [];
+	const memoryDir = makeTempDir();
+	const addressedBy = createChar(calls, {
+		id: '../other-char',
+		name: 'Bert',
+		surname: 'Example',
+	});
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const api = {
+		get(rid) {
+			calls.push([ 'api.get', rid ]);
+			return Promise.resolve(addressedBy);
+		},
+	};
+	const openai = {
+		responses: {
+			create(params) {
+				requests.push(params);
+				return Promise.resolve({
+					id: 'rsp_1',
+					output_text: JSON.stringify({ pose: "Ada smiles." }),
+					output: [],
+				});
+			},
+		},
+	};
+	const controller = createBotController(api, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		openai,
+		logger: {
+			error(...msgs) {
+				errors.push(msgs);
+			},
+		},
+		addons: [ new BotAddonMemory({ memoryDir }) ],
+	});
+
+	try {
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: '../other-char', name: 'Bert', surname: 'Example' },
+			msg: "Hello.",
+			pose: false,
+		});
+		await controller.reset();
+	} finally {
+		controller.dispose();
+	}
+
+	assert.equal(requests.length, 1);
+	assert.equal(Object.hasOwn(JSON.parse(requests[0].input).addressedBy, 'memory'), false);
+	assert.deepEqual(fs.readdirSync(memoryDir), []);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0][0], /invalid character id/);
 });
 
 test("BotController accepts addons with functions, instructions, and pose hooks", async () => {
@@ -436,7 +830,7 @@ test("BotController accepts addons with functions, instructions, and pose hooks"
 			disposed = true;
 		},
 	};
-	const controller = new BotController(api, {
+	const controller = createBotController(api, {
 		char: controlled,
 		controlled,
 		on() {},
@@ -505,7 +899,7 @@ test("BotController reset clears previous response id before next response", asy
 			},
 		},
 	};
-	const controller = new BotController(api, {
+	const controller = createBotController(api, {
 		char: controlled,
 		controlled,
 		on() {},
@@ -540,12 +934,13 @@ test("BotController reset runs hooks around clearing previous response id", asyn
 		name: 'Ada',
 		surname: 'Lovelace',
 	});
-	const controller = new BotController({}, {
+	const controller = createBotController({}, {
 		char: controlled,
 		controlled,
 		on() {},
 		off() {},
 	}, {
+		openai: createUnusedOpenAI(),
 		logger: {},
 		addons: [
 			{
@@ -581,12 +976,13 @@ test("BotController reset logs hook errors and still resets", async () => {
 		name: 'Ada',
 		surname: 'Lovelace',
 	});
-	const controller = new BotController({}, {
+	const controller = createBotController({}, {
 		char: controlled,
 		controlled,
 		on() {},
 		off() {},
 	}, {
+		openai: createUnusedOpenAI(),
 		logger: {
 			error(...msgs) {
 				errors.push(msgs);
@@ -628,12 +1024,13 @@ test("BotAddonReset resets from response chain without deadlocking", async () =>
 		name: 'Ada',
 		surname: 'Lovelace',
 	});
-	const controller = new BotController({}, {
+	const controller = createBotController({}, {
 		char: controlled,
 		controlled,
 		on() {},
 		off() {},
 	}, {
+		openai: createUnusedOpenAI(),
 		logger: {},
 		admins: [ 'admin-char' ],
 		addons: [
@@ -684,12 +1081,13 @@ test("BotAddonSleep stops the controller on sleep output", async () => {
 			return Promise.resolve(createChar(calls));
 		},
 	};
-	const controller = new BotController(api, {
+	const controller = createBotController(api, {
 		char: controlled,
 		controlled,
 		on() {},
 		off() {},
 	}, {
+		openai: createUnusedOpenAI(),
 		logger: {},
 		admins: [ 'other-char' ],
 		addons: [ new BotAddonSleep() ],
@@ -727,12 +1125,13 @@ test("BotAddonSleep ignores sleep output from non-admin characters", async () =>
 			return Promise.resolve(createChar(calls));
 		},
 	};
-	const controller = new BotController(api, {
+	const controller = createBotController(api, {
 		char: controlled,
 		controlled,
 		on() {},
 		off() {},
 	}, {
+		openai: createUnusedOpenAI(),
 		logger: {},
 		admins: [ 'admin-char' ],
 		addons: [ new BotAddonSleep() ],
@@ -753,6 +1152,7 @@ test("BotAddonSleep ignores sleep output from non-admin characters", async () =>
 	assert.equal(controller.started, true);
 	assert.deepEqual(calls, [
 		[ 'char.call', 'ping', undefined ],
+		[ 'api.get', 'core.char.other-char' ],
 	]);
 });
 
@@ -770,6 +1170,27 @@ async function waitForPromise(promise, timeout = 100) {
 	} finally {
 		clearTimeout(timeoutId);
 	}
+}
+
+function makeTempDir() {
+	return fs.mkdtempSync(path.join(os.tmpdir(), 'mucklet-aibot-'));
+}
+
+function createUnusedOpenAI() {
+	return {
+		responses: {
+			create() {
+				throw new Error("unexpected OpenAI request");
+			},
+		},
+	};
+}
+
+function createBotController(api, bot, opts = {}) {
+	return new BotController(api, bot, {
+		openaiApiKey: 'test-openai-key',
+		...opts,
+	});
 }
 
 function createChar(calls, options = {}) {

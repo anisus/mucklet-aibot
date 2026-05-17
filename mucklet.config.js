@@ -20,6 +20,9 @@ const config = {
 
 		/** Character IDs allowed to use admin commands such as "sleep". */
 		admins: [],
+
+		/** Directory for generated per-character memory summaries. */
+		memoryDir: 'memory',
 	},
 };
 

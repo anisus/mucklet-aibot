@@ -1,4 +1,5 @@
 /*.txt
+memory/
 node_modules/
 coverage/
 .eslintcache

@@ -10,6 +10,7 @@ import ShutdownListener from './classes/ShutdownListener.js';
 import BotAddonLook from './classes/BotAddonLook.js';
 import BotAddonSleep from './classes/BotAddonSleep.js';
 import BotAddonReset from './classes/BotAddonReset.js';
+import BotAddonMemory from './classes/BotAddonMemory.js';
 
 export async function runCli(args) {
 	try {
@@ -31,6 +32,7 @@ export async function main(args, options = {}) {
 	const token = getToken(cli.token, cli.tokenfile);
 	const openaiApiKey = getOpenAIKey(cli.openaikey, cli.openaikeyfile);
 	const admins = getAdmins(cli.admin, cfg.bot?.admins);
+	const memoryDir = getMemoryDir(cli.memorydir, cfg.bot?.memoryDir);
 	const characterInstructions = getCharacterInstructions(
 		cli.charinstructions,
 		cli.charinstructionsfile,
@@ -53,6 +55,7 @@ export async function main(args, options = {}) {
 		token,
 		openaiApiKey,
 		admins,
+		memoryDir,
 		characterInstructions,
 		createClient: options.createClient,
 		logger: options.logger,
@@ -65,6 +68,7 @@ export async function runBot(options = {}) {
 	const token = options.token;
 	const openaiApiKey = options.openaiApiKey;
 	const admins = options.admins || [];
+	const memoryDir = options.memoryDir || 'memory';
 	const characterInstructions = options.characterInstructions || '';
 	const createClient = options.createClient || createBotClient;
 	const waitForShutdown = options.waitForShutdown;
@@ -87,6 +91,7 @@ export async function runBot(options = {}) {
 		addons: [
 			new BotAddonSleep(),
 			new BotAddonReset(),
+			new BotAddonMemory({ memoryDir }),
 			new BotAddonLook(),
 		],
 	});
@@ -137,6 +142,10 @@ export function getAdmins(cliAdmins, configAdmins) {
 		.map(id => String(id).trim())
 		.filter(Boolean)
 		.filter((id, idx, arr) => arr.indexOf(id) == idx);
+}
+
+export function getMemoryDir(cliMemoryDir, configMemoryDir) {
+	return String(cliMemoryDir || configMemoryDir || 'memory').trim() || 'memory';
 }
 
 function readInstructionsFile(file) {

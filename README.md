@@ -29,6 +29,7 @@ export default {
 	bot: {
 		characterInstructions: 'You cannot speak, but you communicate with expressive beeps.',
 		characterInstructionsFile: '',
+		memoryDir: 'memory',
 		admins: [
 			'admin-character-id',
 		],
@@ -40,6 +41,8 @@ The API URL may also be passed with `--apiurl`. Character instructions may also
 be passed with `--charinstructions` or read from a file with `--charinstructionsfile`.
 Administrator characters allowed to use admin commands may be configured with
 `bot.admins` or added with one or more `--admin=<CHARACTER_ID>` flags.
+Per-character memory summary files are stored in `bot.memoryDir`, or in the
+directory passed with `--memorydir`.
 
 ## Run
 
@@ -95,6 +98,7 @@ Options:
 -i, --charinstructions <string> Character roleplay instructions
 -I, --charinstructionsfile <file> File containing character roleplay instructions
 --admin <charId>        Administrator character ID allowed to use admin commands
+--memorydir <dir>       Directory for per-character memory files
 -h, --help                Show help
 ```
 

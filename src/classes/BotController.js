@@ -83,6 +83,7 @@ In input message, only use ((ooc)) formatted text silently information not kno, 
  * @property {BotController} controller Bot controller.
  * @property {BotWrapper} bot Bot wrapper.
  * @property {object} api Realm API client.
+ * @property {object} openai OpenAI client.
  * @property {string[]} admins Administrator character IDs.
  * @property {{ log?: (...msgs: unknown[]) => void, error?: (...msgs: unknown[]) => void}} logger Logger functions.
  */
@@ -115,7 +116,7 @@ In input message, only use ((ooc)) formatted text silently information not kno, 
  * @extends import('./BotWrapper.js').BotWrapperOptions
  * @property {(ev: unknown) => void} [onOut] On out event callback.
  * @property {object} [openai] OpenAI client.
- * @property {string} [openaiApiKey] OpenAI API Key. Ignored if openai is set.
+ * @property {string} [openaiApiKey] OpenAI API Key. Required unless openai is set.
  * @property {string} [openaiModel] OpenAI model.
  * @property {string} [characterInstructions] Additional character instructions.
  * @property {string[]} [admins] Administrator character IDs.
@@ -134,8 +135,10 @@ class BotController {
 		this.api = api;
 		this.logger = opts.logger || console;
 		this.opts = opts;
-		this.openai = opts.openai || null;
-		this.openaiApiKey = opts.openaiApiKey || '';
+		if (!opts.openai && !opts.openaiApiKey) {
+			throw new Error("missing OpenAI API key");
+		}
+		this.openai = opts.openai || new OpenAI({ apiKey: opts.openaiApiKey });
 		this.openaiModel = opts.openaiModel || process.env.OPENAI_MODEL || defaultOpenAIModel;
 		this.characterInstructions = opts.characterInstructions || '';
 		this.admins = opts.admins || [];
@@ -319,6 +322,7 @@ class BotController {
 			controller: this,
 			bot: this.bot,
 			api: this.api,
+			openai: this.openai,
 			admins: this.admins,
 			logger: this.logger,
 		};
@@ -348,7 +352,7 @@ class BotController {
 	}
 
 	async _respondToAddress(ev) {
-		const client = this._getOpenAIClient();
+		const client = this.openai;
 		let char = ev.char;
 		try {
 			char = await this.api.get(`core.char.${char.id}`);
@@ -511,13 +515,6 @@ class BotController {
 
 	_getReasoningEffort() {
 		return this.openaiModel.startsWith('gpt-5.1') ? 'none' : 'minimal';
-	}
-
-	_getOpenAIClient() {
-		if (!this.openai) {
-			this.openai = new OpenAI({ apiKey: this.openaiApiKey });
-		}
-		return this.openai;
 	}
 
 	/**
