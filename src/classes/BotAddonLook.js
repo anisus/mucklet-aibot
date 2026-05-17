@@ -86,6 +86,10 @@ Use look function description only as visual reference. Always paraphrase descri
 		}
 	}
 
+	async afterReset() {
+		this.seenCharIds.clear();
+	}
+
 	async lookAtCharacter(char) {
 		this.logger.log?.("Looking at " + char.name + " " + char.surname + ".");
 

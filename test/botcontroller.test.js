@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import BotAddonLook from '../src/classes/BotAddonLook.js';
+import BotAddonReset from '../src/classes/BotAddonReset.js';
 import BotAddonSleep from '../src/classes/BotAddonSleep.js';
 import BotController from '../src/classes/BotController.js';
 
@@ -218,6 +219,92 @@ test("BotAddonLook adds addressedBy description on first input from each charact
 	]);
 });
 
+test("BotAddonLook adds addressedBy description again after response chain reset", async () => {
+	const calls = [];
+	const requests = [];
+	const addressedBy = createChar(calls, {
+		id: 'other-char',
+		name: 'Bert',
+		surname: 'Example',
+		desc: "Bert wears a red coat.",
+	});
+	let controlled;
+	controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+		desc: "Ada wears a brass-buttoned coat.",
+		onCall(method, params) {
+			if (method == 'look') {
+				controlled.lookingAt = {
+					charId: params.charId,
+					char: addressedBy,
+				};
+			}
+		},
+	});
+	const api = {
+		get(rid) {
+			calls.push([ 'api.get', rid ]);
+			return Promise.resolve(addressedBy);
+		},
+	};
+	const openai = {
+		responses: {
+			create(params) {
+				requests.push(params);
+				return Promise.resolve({
+					id: 'rsp_' + requests.length,
+					output_text: JSON.stringify({ pose: "Ada smiles." }),
+					output: [],
+				});
+			},
+		},
+	};
+	const controller = new BotController(api, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		openai,
+		logger: {},
+		addons: [ new BotAddonLook() ],
+	});
+
+	try {
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Hello.",
+			pose: false,
+		});
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Still here.",
+			pose: false,
+		});
+		await controller.reset();
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Back again.",
+			pose: false,
+		});
+	} finally {
+		controller.dispose();
+	}
+
+	assert.equal(requests.length, 3);
+	assert.equal(JSON.parse(requests[0].input).addressedBy.description, "Bert wears a red coat.");
+	assert.equal(Object.hasOwn(JSON.parse(requests[1].input).addressedBy, 'description'), false);
+	assert.equal(JSON.parse(requests[2].input).addressedBy.description, "Bert wears a red coat.");
+	assert.deepEqual(calls.filter(([ type, method ]) => type == 'char.call' && method == 'look'), [
+		[ 'char.call', 'look', { charId: 'other-char' }],
+	]);
+});
+
 test("BotAddonLook keeps responding with empty addressedBy description when first look fails", async () => {
 	const calls = [];
 	const requests = [];
@@ -387,6 +474,203 @@ test("BotController accepts addons with functions, instructions, and pose hooks"
 	assert.equal(disposed, true);
 });
 
+test("BotController reset clears previous response id before next response", async () => {
+	const calls = [];
+	const requests = [];
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const addressedBy = createChar(calls, {
+		id: 'other-char',
+		name: 'Bert',
+		surname: 'Example',
+	});
+	const api = {
+		get(rid) {
+			calls.push([ 'api.get', rid ]);
+			return Promise.resolve(addressedBy);
+		},
+	};
+	const openai = {
+		responses: {
+			create(params) {
+				requests.push(params);
+				return Promise.resolve({
+					id: 'rsp_1',
+					output_text: JSON.stringify({ pose: "Ada smiles." }),
+					output: [],
+				});
+			},
+		},
+	};
+	const controller = new BotController(api, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		openai,
+		logger: {},
+	});
+
+	try {
+		controller.previousResponseId = 'rsp_previous';
+		await controller.reset();
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Hello.",
+			pose: false,
+		});
+	} finally {
+		controller.dispose();
+	}
+
+	assert.equal(Object.hasOwn(requests[0], 'previous_response_id'), false);
+	assert.equal(controller.previousResponseId, 'rsp_1');
+});
+
+test("BotController reset runs hooks around clearing previous response id", async () => {
+	const calls = [];
+	const hookCalls = [];
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const controller = new BotController({}, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		logger: {},
+		addons: [
+			{
+				beforeReset(context) {
+					hookCalls.push([ 'before', context.controller.previousResponseId ]);
+				},
+				afterReset(context) {
+					hookCalls.push([ 'after', context.controller.previousResponseId ]);
+				},
+			},
+		],
+	});
+
+	try {
+		controller.previousResponseId = 'rsp_previous';
+		await controller.reset();
+	} finally {
+		controller.dispose();
+	}
+
+	assert.deepEqual(hookCalls, [
+		[ 'before', 'rsp_previous' ],
+		[ 'after', null ],
+	]);
+});
+
+test("BotController reset logs hook errors and still resets", async () => {
+	const calls = [];
+	const errors = [];
+	const hookCalls = [];
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const controller = new BotController({}, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		logger: {
+			error(...msgs) {
+				errors.push(msgs);
+			},
+		},
+		addons: [
+			{
+				beforeReset() {
+					throw new Error("before failed");
+				},
+				afterReset(context) {
+					hookCalls.push([ 'after', context.controller.previousResponseId ]);
+				},
+			},
+		],
+	});
+
+	try {
+		controller.previousResponseId = 'rsp_previous';
+		await controller.reset();
+	} finally {
+		controller.dispose();
+	}
+
+	assert.equal(controller.previousResponseId, null);
+	assert.deepEqual(hookCalls, [
+		[ 'after', null ],
+	]);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0][0], /error before resetting response chain/);
+	assert.match(errors[0][1].message, /before failed/);
+});
+
+test("BotAddonReset resets from response chain without deadlocking", async () => {
+	const calls = [];
+	const hookCalls = [];
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const controller = new BotController({}, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		logger: {},
+		admins: [ 'admin-char' ],
+		addons: [
+			new BotAddonReset(),
+			{
+				beforeReset(context) {
+					hookCalls.push([ 'before', context.controller.previousResponseId ]);
+				},
+				afterReset(context) {
+					hookCalls.push([ 'after', context.controller.previousResponseId ]);
+				},
+			},
+		],
+	});
+	controller.previousResponseId = 'rsp_previous';
+
+	try {
+		controller._onOut({
+			msg: 'reset',
+			type: 'address',
+			char: { id: 'admin-char' },
+		});
+		await waitForPromise(controller.responseChain);
+	} finally {
+		controller.dispose();
+	}
+
+	assert.equal(controller.previousResponseId, null);
+	assert.deepEqual(hookCalls, [
+		[ 'before', 'rsp_previous' ],
+		[ 'after', null ],
+	]);
+	assert.deepEqual(calls, [
+		[ 'char.call', 'ping', undefined ],
+	]);
+});
+
 test("BotAddonSleep stops the controller on sleep output", async () => {
 	const calls = [];
 	const controlled = createChar(calls, {
@@ -471,6 +755,22 @@ test("BotAddonSleep ignores sleep output from non-admin characters", async () =>
 		[ 'char.call', 'ping', undefined ],
 	]);
 });
+
+async function waitForPromise(promise, timeout = 100) {
+	let timeoutId;
+	try {
+		return await Promise.race([
+			promise,
+			new Promise((_resolve, reject) => {
+				timeoutId = setTimeout(() => {
+					reject(new Error("promise did not resolve"));
+				}, timeout);
+			}),
+		]);
+	} finally {
+		clearTimeout(timeoutId);
+	}
+}
 
 function createChar(calls, options = {}) {
 	return {

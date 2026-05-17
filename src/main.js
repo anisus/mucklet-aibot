@@ -9,6 +9,7 @@ import { getOpenAIKey, getToken } from './utils/token.js';
 import ShutdownListener from './classes/ShutdownListener.js';
 import BotAddonLook from './classes/BotAddonLook.js';
 import BotAddonSleep from './classes/BotAddonSleep.js';
+import BotAddonReset from './classes/BotAddonReset.js';
 
 export async function runCli(args) {
 	try {
@@ -85,6 +86,7 @@ export async function runBot(options = {}) {
 		characterInstructions,
 		addons: [
 			new BotAddonSleep(),
+			new BotAddonReset(),
 			new BotAddonLook(),
 		],
 	});

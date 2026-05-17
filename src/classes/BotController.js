@@ -1,9 +1,12 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import OpenAI from 'openai';
 import BotWrapper from './BotWrapper.js';
 
 const defaultOpenAIModel = 'gpt-5.4-mini';
 const defaultMaxOutputTokens = 1024;
 const maxToolCallRounds = 2;
+const responseChainContext = new AsyncLocalStorage();
 
 const defaultInstructions = (characterInstructions, formattingInstructions, extraInstructions) => {
 	return `You roleplay a character within a MUCK-like roleplaying game.
@@ -102,6 +105,8 @@ In input message, only use ((ooc)) formatted text silently information not kno, 
  * @property {(ev: any, context: BotAddonContext) => void | false | Promise<void | false>} [onOut] Handles room output events. Return false to skip default handling.
  * @property {(context: BotRespondContext) => void | Promise<void>} [beforeRespond] Called before requesting a response.
  * @property {(result: { pose: string }, context: BotRespondContext) => void | Promise<void>} [beforePose] Called before posing a response.
+ * @property {(context: BotAddonContext) => void | Promise<void>} [beforeReset] Called before clearing the response chain.
+ * @property {(context: BotAddonContext) => void | Promise<void>} [afterReset] Called after clearing the response chain.
  * @property {() => void} [dispose] Disposes the addon.
  */
 
@@ -200,6 +205,51 @@ class BotController {
 	}
 
 	/**
+	 * Resets the stored OpenAI response chain.
+	 */
+	async reset() {
+		if (responseChainContext.getStore() === this) {
+			await this._reset();
+			return;
+		}
+
+		await this._enqueueResponseChain(
+			() => this._reset(),
+			"error resetting response chain: ",
+		);
+	}
+
+	async _reset() {
+		const context = this._getAddonContext();
+		for (let addon of this.addons) {
+			try {
+				await addon.beforeReset?.(context);
+			} catch (err) {
+				this.logger.error?.("error before resetting response chain: ", err);
+			}
+		}
+
+		this.previousResponseId = null;
+
+		for (let addon of this.addons) {
+			try {
+				await addon.afterReset?.(context);
+			} catch (err) {
+				this.logger.error?.("error after resetting response chain: ", err);
+			}
+		}
+	}
+
+	_enqueueResponseChain(callback, errorMessage) {
+		this.responseChain = this.responseChain.then(() => (
+			responseChainContext.run(this, callback)
+		)).catch((err) => {
+			this.logger.error?.(errorMessage, err);
+		});
+		return this.responseChain;
+	}
+
+	/**
 	 * Adds a function tool to the bot.
 	 * @param {BotFunction} func Function object.
 	 * @returns {this}
@@ -280,7 +330,7 @@ class BotController {
 	 */
 	_onOut(ev) {
 		this.logger.log?.("CtrlEvent: ", JSON.stringify(ev));
-		this.responseChain = this.responseChain.then(async () => {
+		this._enqueueResponseChain(async () => {
 			for (let addon of this.addons) {
 				if (await addon.onOut?.(ev, this._getAddonContext()) === false) {
 					return;
@@ -288,9 +338,7 @@ class BotController {
 			}
 
 			return this._handleOut(ev);
-		}).catch((err) => {
-			this.logger.error?.("error handling out event: ", err);
-		});
+		}, "error handling out event: ");
 	}
 
 	_handleOut(ev) {
