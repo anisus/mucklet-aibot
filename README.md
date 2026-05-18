@@ -14,6 +14,12 @@ It is still under construction.
 ## Install
 
 ```text
+npm install -g mucklet-aibot
+```
+
+For local development from a checkout:
+
+```text
 npm install
 ```
 
@@ -53,20 +59,20 @@ setting controls when compaction should trigger, and defaults to `100000` tokens
 ## Run
 
 ```text
-node index.js --token=<BOT_TOKEN> --openaikey=<OPENAI_API_KEY>
+mucklet-aibot --token=<BOT_TOKEN> --openaikey=<OPENAI_API_KEY>
 ```
 
 To allow one or more characters to use admin commands such as `sleep`, pass
 their character IDs:
 
 ```text
-node index.js --token=<BOT_TOKEN> --openaikey=<OPENAI_API_KEY> --admin=<CHARACTER_ID>
+mucklet-aibot --token=<BOT_TOKEN> --openaikey=<OPENAI_API_KEY> --admin=<CHARACTER_ID>
 ```
 
 or:
 
 ```text
-MUCKLET_BOT_TOKEN=<BOT_TOKEN> OPENAI_API_KEY=<OPENAI_API_KEY> npm start
+MUCKLET_BOT_TOKEN=<BOT_TOKEN> OPENAI_API_KEY=<OPENAI_API_KEY> mucklet-aibot
 ```
 
 The process keeps running after startup so it can keep the character awake. Press
@@ -89,23 +95,23 @@ OpenAI API key sources are checked in this order:
 ## Usage
 
 ```text
-node index.js [options]
+mucklet-aibot [options]
 ```
 
 Options:
 
 ```text
--c, --config <file>       Mucklet AI bot config file
--a, --apiurl <url>        Realm API WebSocket URL
--t, --token <string>      Bot token generated under Character Settings
--T, --tokenfile <file>    File containing the bot token
--k, --openaikey <string>  OpenAI API key
--K, --openaikeyfile <file> File containing the OpenAI API key
--i, --charinstructions <string> Character roleplay instructions
--I, --charinstructionsfile <file> File containing character roleplay instructions
---admin <charId>        Administrator character ID allowed to use admin commands
---memorydir <dir>       Directory for per-character memory files
--h, --help                Show help
+-c, --config <file>              Mucklet AI bot config file
+-a, --apiurl <url>               Realm API WebSocket URL
+-t, --token <string>             Bot token generated under Character Settings
+-T, --tokenfile <file>           File containing the bot token
+-k, --openaikey <string>         OpenAI API key
+-K, --openaikeyfile <file>       File containing the OpenAI API key
+-i, --charinstructions <string>  Character roleplay instructions
+-I, --charinstructionsfile <file>  File containing character roleplay instructions
+--admin <charId>                 Administrator character ID allowed to use admin commands
+--memorydir <dir>                Directory for per-character memory files
+-h, --help                       Show help
 ```
 
 ## Development

@@ -14,8 +14,6 @@ export const options = [
 	{ name: 'help', flags: [ 'h' ], type: Boolean, stop: true, desc: "Show this message" },
 ];
 
-const padding = 28;
-
 export function parseCli(args) {
 	return parse(args, options);
 }
@@ -24,7 +22,7 @@ export function printHelp() {
 	console.log('\n' +
 		"Control a Mucklet realm bot using ChatGPT API.\n\n" +
 		"Usage:\n" +
-		"  node index.js [options]\n\n" +
+		"  mucklet-aibot [options]\n\n" +
 		"Options:\n" +
 		formatOptions(options) +
 		'\n',
@@ -32,14 +30,20 @@ export function printHelp() {
 }
 
 function formatOptions(opts) {
+	const padding = Math.max(...opts.map(o => formatFlags(o).length)) + 2;
 	return opts.map(o => {
-		let flags = o.flags?.length
-			? o.flags.map(f => '-' + f).join(', ') + ', --' + o.name
-			: '--' + o.name;
-		if (o.value) {
-			flags += ' <' + o.value + '>';
-		}
+		const flags = formatFlags(o);
 		let desc = Array.isArray(o.desc) ? o.desc.join(' ') : o.desc;
 		return '  ' + flags.padEnd(padding) + desc;
 	}).join('\n');
+}
+
+function formatFlags(option) {
+	let flags = option.flags?.length
+		? option.flags.map(f => '-' + f).join(', ') + ', --' + option.name
+		: '--' + option.name;
+	if (option.value) {
+		flags += ' <' + option.value + '>';
+	}
+	return flags;
 }
