@@ -39,6 +39,117 @@ test("BotController requires an OpenAI API key or client", () => {
 	controller.dispose();
 });
 
+test("BotController adds compaction context management to response requests", async () => {
+	const calls = [];
+	const requests = [];
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const addressedBy = createChar(calls, {
+		id: 'other-char',
+		name: 'Bert',
+		surname: 'Example',
+	});
+	const api = {
+		get(rid) {
+			calls.push([ 'api.get', rid ]);
+			return Promise.resolve(addressedBy);
+		},
+	};
+	const openai = {
+		responses: {
+			create(params) {
+				requests.push(params);
+				return Promise.resolve({
+					id: 'rsp_1',
+					output_text: JSON.stringify({ pose: "Ada smiles." }),
+					output: [],
+				});
+			},
+		},
+	};
+	const controller = createBotController(api, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		openai,
+		logger: {},
+		compactThreshold: 80000,
+	});
+
+	try {
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: 'other-char', name: 'Bert', surname: 'Example' },
+			msg: "Hello.",
+			pose: false,
+		});
+	} finally {
+		controller.dispose();
+	}
+
+	assert.deepEqual(requests[0].context_management, [
+		{
+			type: 'compaction',
+			compact_threshold: 80000,
+		},
+	]);
+});
+
+test("BotController uses the default compaction threshold", () => {
+	const calls = [];
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const controller = createBotController({}, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		openai: createUnusedOpenAI(),
+		logger: {},
+	});
+
+	try {
+		assert.equal(controller.compactThreshold, 100000);
+	} finally {
+		controller.dispose();
+	}
+});
+
+test("BotController rejects invalid compaction thresholds", () => {
+	const calls = [];
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const bot = {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	};
+
+	assert.throws(() => createBotController({}, bot, {
+		openai: createUnusedOpenAI(),
+		logger: {},
+		compactThreshold: 0,
+	}), /compactThreshold must be a positive integer/);
+	assert.throws(() => createBotController({}, bot, {
+		openai: createUnusedOpenAI(),
+		logger: {},
+		compactThreshold: '100000',
+	}), /compactThreshold must be a positive integer/);
+});
+
 test("BotController resolves look tool calls before posing", async () => {
 	const calls = [];
 	const requests = [];

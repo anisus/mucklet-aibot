@@ -56,6 +56,7 @@ export async function main(args, options = {}) {
 		openaiApiKey,
 		admins,
 		memoryDir,
+		compactThreshold: cfg.bot?.compactThreshold,
 		characterInstructions,
 		createClient: options.createClient,
 		logger: options.logger,
@@ -69,6 +70,7 @@ export async function runBot(options = {}) {
 	const openaiApiKey = options.openaiApiKey;
 	const admins = options.admins || [];
 	const memoryDir = options.memoryDir || 'memory';
+	const compactThreshold = options.compactThreshold;
 	const characterInstructions = options.characterInstructions || '';
 	const createClient = options.createClient || createBotClient;
 	const waitForShutdown = options.waitForShutdown;
@@ -87,6 +89,7 @@ export async function runBot(options = {}) {
 		logger,
 		openaiApiKey,
 		admins,
+		compactThreshold,
 		characterInstructions,
 		addons: [
 			new BotAddonSleep(),

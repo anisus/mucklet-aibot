@@ -4,6 +4,7 @@ import OpenAI from 'openai';
 import BotWrapper from './BotWrapper.js';
 
 const defaultOpenAIModel = 'gpt-5.4-mini';
+const defaultCompactThreshold = 100000;
 const defaultMaxOutputTokens = 1024;
 const maxToolCallRounds = 2;
 const responseChainContext = new AsyncLocalStorage();
@@ -119,6 +120,7 @@ In input message, only use ((ooc)) formatted text silently information not kno, 
  * @property {object} [openai] OpenAI client.
  * @property {string} [openaiApiKey] OpenAI API Key. Required unless openai is set.
  * @property {string} [openaiModel] OpenAI model.
+ * @property {number} [compactThreshold] Response chain token threshold for OpenAI compaction.
  * @property {string} [characterInstructions] Additional character instructions.
  * @property {string[]} [admins] Administrator character IDs.
  * @property {BotFunction[]} [functions] Bot functions.
@@ -141,6 +143,10 @@ class BotController {
 		}
 		this.openai = opts.openai || new OpenAI({ apiKey: opts.openaiApiKey });
 		this.openaiModel = opts.openaiModel || process.env.OPENAI_MODEL || defaultOpenAIModel;
+		this.compactThreshold = opts.compactThreshold ?? defaultCompactThreshold;
+		if (!Number.isSafeInteger(this.compactThreshold) || this.compactThreshold <= 0) {
+			throw new Error("compactThreshold must be a positive integer");
+		}
 		this.characterInstructions = opts.characterInstructions || '';
 		this.admins = opts.admins || [];
 		this.previousResponseId = null;
@@ -398,6 +404,12 @@ class BotController {
 			model: this.openaiModel,
 			max_output_tokens: defaultMaxOutputTokens,
 			store: true,
+			context_management: [
+				{
+					type: 'compaction',
+					compact_threshold: this.compactThreshold,
+				},
+			],
 			text: {
 				format: {
 					type: 'json_schema',

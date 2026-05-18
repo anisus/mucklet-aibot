@@ -23,6 +23,9 @@ const config = {
 
 		/** Directory for generated per-character memory summaries. */
 		memoryDir: 'memory',
+
+		/** Token threshold where OpenAI should compact the response chain. */
+		compactThreshold: 100000,
 	},
 };
 
