@@ -574,7 +574,7 @@ test("BotAddonMemory summarizes tracked characters before reset", async () => {
 					const input = JSON.parse(params.input);
 					return Promise.resolve({
 						id: 'summary_' + input.character.id,
-						output_text: input.character.name + " remembers the conversation.",
+						output_text: "You remember " + input.character.name + " from the conversation.",
 						output: [],
 					});
 				}
@@ -618,10 +618,12 @@ test("BotAddonMemory summarizes tracked characters before reset", async () => {
 
 	const summaryRequests = requests.filter(params => params.instructions?.startsWith('Create a concise private memory'));
 	assert.equal(summaryRequests.length, 2);
+	assert.match(summaryRequests[0].instructions, /second person from the bot character's viewpoint/);
+	assert.match(summaryRequests[0].instructions, /not write the memory as the other character's memory/);
 	assert.deepEqual(summaryRequests.map(params => params.previous_response_id), [ 'rsp_2', 'rsp_2' ]);
 	assert.equal(JSON.parse(summaryRequests[0].input).existingMemory, "Bert already trusts Ada.");
-	assert.equal(fs.readFileSync(path.join(memoryDir, 'other-char.txt'), 'utf8'), "Bert remembers the conversation.\n");
-	assert.equal(fs.readFileSync(path.join(memoryDir, 'third-char.txt'), 'utf8'), "Cora remembers the conversation.\n");
+	assert.equal(fs.readFileSync(path.join(memoryDir, 'other-char.txt'), 'utf8'), "You remember Bert from the conversation.\n");
+	assert.equal(fs.readFileSync(path.join(memoryDir, 'third-char.txt'), 'utf8'), "You remember Cora from the conversation.\n");
 	assert.equal(controller.previousResponseId, null);
 });
 
@@ -653,7 +655,7 @@ test("BotAddonMemory summarizes tracked characters before stop", async () => {
 				if (params.instructions?.startsWith('Create a concise private memory')) {
 					return Promise.resolve({
 						id: 'summary_1',
-						output_text: "Bert remembers Ada before sleep.",
+						output_text: "You remember Bert before sleep.",
 						output: [],
 					});
 				}
@@ -694,7 +696,7 @@ test("BotAddonMemory summarizes tracked characters before stop", async () => {
 	assert.equal(summaryRequests.length, 1);
 	assert.equal(summaryRequests[0].previous_response_id, 'rsp_1');
 	assert.equal(JSON.parse(summaryRequests[0].input).existingMemory, "Bert already trusts Ada.");
-	assert.equal(fs.readFileSync(path.join(memoryDir, 'other-char.txt'), 'utf8'), "Bert remembers Ada before sleep.\n");
+	assert.equal(fs.readFileSync(path.join(memoryDir, 'other-char.txt'), 'utf8'), "You remember Bert before sleep.\n");
 	assert.equal(controller.started, false);
 });
 
