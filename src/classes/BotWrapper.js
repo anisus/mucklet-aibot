@@ -165,6 +165,24 @@ class BotWrapper {
 	}
 
 	/**
+	 * Addresses one or more characters in the the room.
+	 * @throws {Err} Throws an error if character is not awake.
+	 * @param {string[]} charIds IDs of characters to address.
+	 * @param {object} [opts] Optional parameters.
+	 * @param {boolean} [opts.pose] Pose the message instead of saying it. Defaults to false.
+	 * @param {boolean} [opts.ooc] Out of character message. Defaults to false.
+	 */
+	async address(charIds, msg, opts = {}) {
+		const ctrl = assertAwake(this.bot);
+		await ctrl.call('address', {
+			charIds,
+			msg,
+			pose: opts.pose || undefined,
+			ooc: opts.ooc || undefined,
+		});
+	}
+
+	/**
 	 * Looks at a character in the room.
 	 * @throws {Err} Throws an error if character is not awake.
 	 * @param {string | null} charId ID of character to look at or null to stop looking.

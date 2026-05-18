@@ -30,6 +30,7 @@ export default {
 		characterInstructions: 'You cannot speak, but you communicate with expressive beeps.',
 		characterInstructionsFile: '',
 		memoryDir: 'memory',
+		resetTimeout: 1000 * 60 * 15,
 		compactThreshold: 100000,
 		admins: [
 			'admin-character-id',
@@ -44,6 +45,8 @@ Administrator characters allowed to use admin commands may be configured with
 `bot.admins` or added with one or more `--admin=<CHARACTER_ID>` flags.
 Per-character memory summary files are stored in `bot.memoryDir`, or in the
 directory passed with `--memorydir`.
+The response chain is reset after `bot.resetTimeout` milliseconds without an
+addressed message, and defaults to 15 minutes.
 OpenAI response chain compaction is always configured. The `bot.compactThreshold`
 setting controls when compaction should trigger, and defaults to `100000` tokens.
 

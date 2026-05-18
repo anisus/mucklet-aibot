@@ -33,6 +33,7 @@ export async function main(args, options = {}) {
 	const openaiApiKey = getOpenAIKey(cli.openaikey, cli.openaikeyfile);
 	const admins = getAdmins(cli.admin, cfg.bot?.admins);
 	const memoryDir = getMemoryDir(cli.memorydir, cfg.bot?.memoryDir);
+	const resetTimeout = cfg.bot?.resetTimeout;
 	const characterInstructions = getCharacterInstructions(
 		cli.charinstructions,
 		cli.charinstructionsfile,
@@ -56,6 +57,7 @@ export async function main(args, options = {}) {
 		openaiApiKey,
 		admins,
 		memoryDir,
+		resetTimeout,
 		compactThreshold: cfg.bot?.compactThreshold,
 		characterInstructions,
 		createClient: options.createClient,
@@ -70,6 +72,7 @@ export async function runBot(options = {}) {
 	const openaiApiKey = options.openaiApiKey;
 	const admins = options.admins || [];
 	const memoryDir = options.memoryDir || 'memory';
+	const resetTimeout = options.resetTimeout;
 	const compactThreshold = options.compactThreshold;
 	const characterInstructions = options.characterInstructions || '';
 	const createClient = options.createClient || createBotClient;
@@ -93,7 +96,7 @@ export async function runBot(options = {}) {
 		characterInstructions,
 		addons: [
 			new BotAddonSleep(),
-			new BotAddonReset(),
+			new BotAddonReset({ resetTimeout }),
 			new BotAddonMemory({ memoryDir }),
 			new BotAddonLook(),
 		],

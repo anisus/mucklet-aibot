@@ -24,6 +24,9 @@ const config = {
 		/** Directory for generated per-character memory summaries. */
 		memoryDir: 'memory',
 
+		/** Milliseconds after the last addressed message before clearing the response chain. */
+		resetTimeout: 1000 * 60 * 15,
+
 		/** Token threshold where OpenAI should compact the response chain. */
 		compactThreshold: 100000,
 	},

@@ -263,7 +263,12 @@ test("BotController resolves look tool calls before posing", async () => {
 	assert.deepEqual(calls, [
 		[ 'char.call', 'ping', undefined ],
 		[ 'api.get', 'core.char.other-char' ],
-		[ 'char.call', 'pose', { msg: "nods at the polished boots." }],
+		[ 'char.call', 'address', {
+			charIds: [ 'other-char' ],
+			msg: "nods at the polished boots.",
+			pose: true,
+			ooc: undefined,
+		}],
 	]);
 });
 
@@ -1049,7 +1054,12 @@ test("BotController accepts addons with functions, instructions, and pose hooks"
 	assert.deepEqual(calls, [
 		[ 'char.call', 'ping', undefined ],
 		[ 'api.get', 'core.char.other-char' ],
-		[ 'char.call', 'pose', { msg: "smiles. quietly." }],
+		[ 'char.call', 'address', {
+			charIds: [ 'other-char' ],
+			msg: "smiles. quietly.",
+			pose: true,
+			ooc: undefined,
+		}],
 	]);
 	assert.equal(disposed, true);
 });
@@ -1254,6 +1264,121 @@ test("BotAddonReset resets from response chain without deadlocking", async () =>
 	]);
 });
 
+test("BotAddonReset uses a configurable reset timeout", () => {
+	const defaultAddon = new BotAddonReset();
+	try {
+		assert.equal(defaultAddon.resetTimeout, 1000 * 60 * 15);
+	} finally {
+		defaultAddon.dispose();
+	}
+
+	const addon = new BotAddonReset({ resetTimeout: 5000 });
+	try {
+		assert.equal(addon.resetTimeout, 5000);
+	} finally {
+		addon.dispose();
+	}
+
+	assert.throws(() => new BotAddonReset({ resetTimeout: 0 }), /resetTimeout must be a positive integer/);
+	assert.throws(() => new BotAddonReset({ resetTimeout: '5000' }), /resetTimeout must be a positive integer/);
+});
+
+test("BotAddonReset resets response chain after addressed timeout", async () => {
+	const resetCalls = [];
+	const timers = createFakeTimeouts();
+	const addon = new BotAddonReset({
+		resetTimeout: 1000,
+		setTimeout: timers.setTimeout,
+		clearTimeout: timers.clearTimeout,
+	});
+	const context = {
+		controller: {
+			reset() {
+				resetCalls.push('reset');
+				return Promise.resolve();
+			},
+		},
+		bot: {
+			getId() {
+				return 'bot-char';
+			},
+		},
+		admins: [],
+		logger: {},
+	};
+
+	try {
+		addon.init(context);
+		await addon.onOut({
+			type: 'address',
+			msg: "Hello.",
+			char: { id: 'other-char' },
+		}, context);
+
+		assert.deepEqual(resetCalls, []);
+		assert.notEqual(addon.timer, null);
+		assert.equal(addon.timer.delay, 1000);
+
+		await timers.fire(addon.timer);
+		assert.deepEqual(resetCalls, [ 'reset' ]);
+		assert.equal(addon.timer, null);
+	} finally {
+		addon.dispose();
+	}
+});
+
+test("BotAddonReset restarts timeout on each addressed event", async () => {
+	const resetCalls = [];
+	const timers = createFakeTimeouts();
+	const addon = new BotAddonReset({
+		resetTimeout: 1000,
+		setTimeout: timers.setTimeout,
+		clearTimeout: timers.clearTimeout,
+	});
+	const context = {
+		controller: {
+			reset() {
+				resetCalls.push('reset');
+				return Promise.resolve();
+			},
+		},
+		bot: {
+			getId() {
+				return 'bot-char';
+			},
+		},
+		admins: [],
+		logger: {},
+	};
+
+	try {
+		addon.init(context);
+		await addon.onOut({
+			type: 'address',
+			msg: "Hello.",
+			char: { id: 'other-char' },
+		}, context);
+		const firstTimer = addon.timer;
+
+		await addon.onOut({
+			type: 'address',
+			msg: "Still there?",
+			char: { id: 'other-char' },
+		}, context);
+
+		assert.equal(firstTimer.active, false);
+		assert.deepEqual(resetCalls, []);
+
+		await timers.fire(firstTimer);
+		assert.deepEqual(resetCalls, []);
+
+		await timers.fire(addon.timer);
+		assert.deepEqual(resetCalls, [ 'reset' ]);
+	} finally {
+		addon.dispose();
+	}
+});
+
 test("BotAddonSleep stops the controller on sleep output", async () => {
 	const calls = [];
 	const controlled = createChar(calls, {
@@ -1368,6 +1493,26 @@ function createUnusedOpenAI() {
 			create() {
 				throw new Error("unexpected OpenAI request");
 			},
+		},
+	};
+}
+
+function createFakeTimeouts() {
+	return {
+		setTimeout(callback, delay) {
+			return { active: true, callback, delay };
+		},
+		clearTimeout(timer) {
+			if (timer) {
+				timer.active = false;
+			}
+		},
+		fire(timer) {
+			if (!timer?.active) {
+				return Promise.resolve();
+			}
+			timer.active = false;
+			return Promise.resolve(timer.callback());
 		},
 	};
 }

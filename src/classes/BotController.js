@@ -500,9 +500,9 @@ class BotController {
 			await addon.beforePose?.(result, respondContext);
 		}
 		if (result.pose) {
-			await this.bot.pose(result.pose);
+			await this.bot.address([ char.id ], result.pose, { pose: true });
 		} else {
-			await this.bot.pose("derped.");
+			await this.bot.address([ char.id ], "derped.", { pose: true });
 		}
 	}
 
