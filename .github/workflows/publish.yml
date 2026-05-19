@@ -9,6 +9,11 @@ on:
         description: Release tag to publish, for example v1.2.3
         required: true
         type: string
+      publish_npm:
+        description: Publish package to npm
+        required: true
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -25,8 +30,10 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "release" ]]; then
             tag="${{ github.event.release.tag_name }}"
+            publish_npm=true
           else
             tag="${{ inputs.tag }}"
+            publish_npm="${{ inputs.publish_npm }}"
           fi
 
           version="${tag#v}"
@@ -38,6 +45,7 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "publish_npm=$publish_npm" >> "$GITHUB_OUTPUT"
 
       - name: Check out release tag
         uses: actions/checkout@v4
@@ -77,6 +85,7 @@ jobs:
         run: npm run lint
 
       - name: Publish to npm
+        if: steps.release.outputs.publish_npm == 'true'
         run: npm publish --provenance
 
       - name: Log in to Docker Hub
@@ -84,6 +93,9 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Extract Docker metadata
         id: meta
