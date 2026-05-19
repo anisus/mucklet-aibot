@@ -10,6 +10,9 @@ import BotAddonReset from '../src/classes/BotAddonReset.js';
 import BotAddonSleep from '../src/classes/BotAddonSleep.js';
 import BotController from '../src/classes/BotController.js';
 
+const hourMs = 60 * 60 * 1000;
+const dayMs = 24 * hourMs;
+
 test("BotController requires an OpenAI API key or client", () => {
 	const calls = [];
 	const controlled = createChar(calls, {
@@ -525,7 +528,11 @@ test("BotAddonMemory adds addressedBy memory on first input from each character"
 	const calls = [];
 	const requests = [];
 	const memoryDir = makeTempDir();
-	fs.writeFileSync(path.join(memoryDir, 'other-char.txt'), "Bert met Ada near the market.\n", 'utf8');
+	writeMemoryFile(memoryDir, 'other-char', {
+		memory: "Bert met Ada near the market.",
+		firstSeen: 1000,
+		lastSeen: Date.now() - 5 * hourMs,
+	});
 	const addressedBy = createChar(calls, {
 		id: 'other-char',
 		name: 'Bert',
@@ -592,8 +599,82 @@ test("BotAddonMemory adds addressedBy memory on first input from each character"
 
 	assert.equal(requests.length, 3);
 	assert.equal(JSON.parse(requests[0].input).addressedBy.memory, "Bert met Ada near the market.");
+	assert.equal(JSON.parse(requests[0].input).addressedBy.lastSeen, "5 hours ago");
 	assert.equal(Object.hasOwn(JSON.parse(requests[1].input).addressedBy, 'memory'), false);
+	assert.equal(Object.hasOwn(JSON.parse(requests[1].input).addressedBy, 'lastSeen'), false);
 	assert.equal(JSON.parse(requests[2].input).addressedBy.memory, "Bert met Ada near the market.");
+	assert.equal(JSON.parse(requests[2].input).addressedBy.lastSeen, "5 hours ago");
+});
+
+test("BotAddonMemory handles prototype-like character IDs", async () => {
+	const calls = [];
+	const requests = [];
+	const memoryDir = makeTempDir();
+	writeMemoryFile(memoryDir, '__proto__', {
+		memory: "Bert met Ada near the market.",
+		firstSeen: 1000,
+		lastSeen: Date.now() - 5 * hourMs,
+	});
+	const addressedBy = createChar(calls, {
+		id: '__proto__',
+		name: 'Bert',
+		surname: 'Example',
+	});
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+	});
+	const api = {
+		get(rid) {
+			calls.push([ 'api.get', rid ]);
+			return Promise.resolve(addressedBy);
+		},
+	};
+	const openai = {
+		responses: {
+			create(params) {
+				requests.push(params);
+				return Promise.resolve({
+					id: 'rsp_' + requests.length,
+					output_text: JSON.stringify({ pose: "Ada smiles." }),
+					output: [],
+				});
+			},
+		},
+	};
+	const memory = new BotAddonMemory({ memoryDir });
+	const controller = createBotController(api, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		openai,
+		logger: {},
+		addons: [ memory ],
+	});
+
+	try {
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: '__proto__', name: 'Bert', surname: 'Example' },
+			msg: "Hello.",
+			pose: false,
+		});
+		await controller._respondToAddress({
+			type: 'address',
+			char: { id: '__proto__', name: 'Bert', surname: 'Example' },
+			msg: "Still here.",
+			pose: false,
+		});
+	} finally {
+		controller.dispose();
+	}
+
+	assert.equal(requests.length, 2);
+	assert.equal(JSON.parse(requests[0].input).addressedBy.memory, "Bert met Ada near the market.");
+	assert.equal(Object.hasOwn(JSON.parse(requests[1].input).addressedBy, 'memory'), false);
 });
 
 test("BotAddonMemory skips missing memory files", async () => {
@@ -652,13 +733,18 @@ test("BotAddonMemory skips missing memory files", async () => {
 
 	assert.equal(requests.length, 1);
 	assert.equal(Object.hasOwn(JSON.parse(requests[0].input).addressedBy, 'memory'), false);
+	assert.equal(Object.hasOwn(JSON.parse(requests[0].input).addressedBy, 'lastSeen'), false);
 });
 
 test("BotAddonMemory summarizes tracked characters before reset", async () => {
 	const calls = [];
 	const requests = [];
 	const memoryDir = makeTempDir();
-	fs.writeFileSync(path.join(memoryDir, 'other-char.txt'), "Bert already trusts Ada.\n", 'utf8');
+	writeMemoryFile(memoryDir, 'other-char', {
+		memory: "Bert already trusts Ada.",
+		firstSeen: 1000,
+		lastSeen: Date.now() - 3 * dayMs,
+	});
 	const characters = {
 		'other-char': createChar(calls, {
 			id: 'other-char',
@@ -713,6 +799,10 @@ test("BotAddonMemory summarizes tracked characters before reset", async () => {
 		logger: {},
 		addons: [ new BotAddonMemory({ memoryDir }) ],
 	});
+	let beforeSummary;
+	let afterSummary;
+	let beforeThirdSeen;
+	let afterThirdSeen;
 
 	try {
 		await controller._respondToAddress({
@@ -721,25 +811,41 @@ test("BotAddonMemory summarizes tracked characters before reset", async () => {
 			msg: "Hello.",
 			pose: false,
 		});
+		beforeThirdSeen = Date.now();
 		await controller._respondToAddress({
 			type: 'address',
 			char: { id: 'third-char', name: 'Cora', surname: 'Example' },
 			msg: "Hello.",
 			pose: false,
 		});
+		afterThirdSeen = Date.now();
+		beforeSummary = Date.now();
 		await controller.reset();
+		afterSummary = Date.now();
 	} finally {
 		controller.dispose();
 	}
 
+	const otherMemory = readMemoryFile(memoryDir, 'other-char');
+	const thirdMemory = readMemoryFile(memoryDir, 'third-char');
 	const summaryRequests = requests.filter(params => params.instructions?.startsWith('Create a concise private memory'));
 	assert.equal(summaryRequests.length, 2);
 	assert.match(summaryRequests[0].instructions, /second person from the bot character's viewpoint/);
 	assert.match(summaryRequests[0].instructions, /not write the memory as the other character's memory/);
 	assert.deepEqual(summaryRequests.map(params => params.previous_response_id), [ 'rsp_2', 'rsp_2' ]);
+	assert.equal(JSON.parse(requests[0].input).addressedBy.lastSeen, "3 days ago");
+	assert.equal(Object.hasOwn(JSON.parse(requests[1].input).addressedBy, 'lastSeen'), false);
 	assert.equal(JSON.parse(summaryRequests[0].input).existingMemory, "Bert already trusts Ada.");
-	assert.equal(fs.readFileSync(path.join(memoryDir, 'other-char.txt'), 'utf8'), "You remember Bert from the conversation.\n");
-	assert.equal(fs.readFileSync(path.join(memoryDir, 'third-char.txt'), 'utf8'), "You remember Cora from the conversation.\n");
+	assert.equal(Object.hasOwn(JSON.parse(summaryRequests[0].input), 'lastSeen'), false);
+	assert.equal(otherMemory.memory, "You remember Bert from the conversation.");
+	assert.equal(otherMemory.firstSeen, 1000);
+	assert.ok(otherMemory.lastSeen >= beforeSummary);
+	assert.ok(otherMemory.lastSeen <= afterSummary);
+	assert.equal(thirdMemory.memory, "You remember Cora from the conversation.");
+	assert.ok(thirdMemory.firstSeen >= beforeThirdSeen);
+	assert.ok(thirdMemory.firstSeen <= afterThirdSeen);
+	assert.ok(thirdMemory.lastSeen >= beforeSummary);
+	assert.ok(thirdMemory.lastSeen <= afterSummary);
 	assert.equal(controller.previousResponseId, null);
 });
 
@@ -747,7 +853,11 @@ test("BotAddonMemory summarizes tracked characters before stop", async () => {
 	const calls = [];
 	const requests = [];
 	const memoryDir = makeTempDir();
-	fs.writeFileSync(path.join(memoryDir, 'other-char.txt'), "Bert already trusts Ada.\n", 'utf8');
+	writeMemoryFile(memoryDir, 'other-char', {
+		memory: "Bert already trusts Ada.",
+		firstSeen: 1000,
+		lastSeen: Date.now() - 5 * hourMs,
+	});
 	const addressedBy = createChar(calls, {
 		id: 'other-char',
 		name: 'Bert',
@@ -784,6 +894,7 @@ test("BotAddonMemory summarizes tracked characters before stop", async () => {
 			},
 		},
 	};
+	const memory = new BotAddonMemory({ memoryDir });
 	const controller = createBotController(api, {
 		char: controlled,
 		controlled,
@@ -792,9 +903,11 @@ test("BotAddonMemory summarizes tracked characters before stop", async () => {
 	}, {
 		openai,
 		logger: {},
-		addons: [ new BotAddonMemory({ memoryDir }) ],
+		addons: [ memory ],
 	});
 	controller.started = true;
+	let beforeSummary;
+	let afterSummary;
 
 	try {
 		await controller._respondToAddress({
@@ -803,16 +916,26 @@ test("BotAddonMemory summarizes tracked characters before stop", async () => {
 			msg: "Hello.",
 			pose: false,
 		});
+		beforeSummary = Date.now();
 		await controller.stop();
+		afterSummary = Date.now();
 	} finally {
 		controller.dispose();
 	}
 
+	const otherMemory = readMemoryFile(memoryDir, 'other-char');
 	const summaryRequests = requests.filter(params => params.instructions?.startsWith('Create a concise private memory'));
 	assert.equal(summaryRequests.length, 1);
 	assert.equal(summaryRequests[0].previous_response_id, 'rsp_1');
+	assert.equal(JSON.parse(requests[0].input).addressedBy.lastSeen, "5 hours ago");
 	assert.equal(JSON.parse(summaryRequests[0].input).existingMemory, "Bert already trusts Ada.");
-	assert.equal(fs.readFileSync(path.join(memoryDir, 'other-char.txt'), 'utf8'), "You remember Bert before sleep.\n");
+	assert.equal(Object.hasOwn(JSON.parse(summaryRequests[0].input), 'lastSeen'), false);
+	assert.equal(otherMemory.memory, "You remember Bert before sleep.");
+	assert.equal(otherMemory.firstSeen, 1000);
+	assert.ok(otherMemory.lastSeen >= beforeSummary);
+	assert.ok(otherMemory.lastSeen <= afterSummary);
+	assert.equal(Object.keys(memory.seenCharIds).length, 0);
+	assert.equal(memory.trackedChars.size, 0);
 	assert.equal(controller.started, false);
 });
 
@@ -821,7 +944,11 @@ test("BotAddonMemory leaves existing memory unchanged on empty summary", async (
 	const requests = [];
 	const errors = [];
 	const memoryDir = makeTempDir();
-	fs.writeFileSync(path.join(memoryDir, 'other-char.txt'), "Bert already trusts Ada.\n", 'utf8');
+	writeMemoryFile(memoryDir, 'other-char', {
+		memory: "Bert already trusts Ada.",
+		firstSeen: 1000,
+		lastSeen: 2000,
+	});
 	const addressedBy = createChar(calls, {
 		id: 'other-char',
 		name: 'Bert',
@@ -885,7 +1012,11 @@ test("BotAddonMemory leaves existing memory unchanged on empty summary", async (
 		controller.dispose();
 	}
 
-	assert.equal(fs.readFileSync(path.join(memoryDir, 'other-char.txt'), 'utf8'), "Bert already trusts Ada.\n");
+	assert.deepEqual(readMemoryFile(memoryDir, 'other-char'), {
+		memory: "Bert already trusts Ada.",
+		firstSeen: 1000,
+		lastSeen: 2000,
+	});
 	assert.equal(errors.length, 1);
 	assert.match(errors[0][0], /empty memory summary/);
 });
@@ -1485,6 +1616,14 @@ async function waitForPromise(promise, timeout = 100) {
 
 function makeTempDir() {
 	return fs.mkdtempSync(path.join(os.tmpdir(), 'mucklet-aibot-'));
+}
+
+function readMemoryFile(memoryDir, charId) {
+	return JSON.parse(fs.readFileSync(path.join(memoryDir, charId + '.txt'), 'utf8'));
+}
+
+function writeMemoryFile(memoryDir, charId, memory) {
+	fs.writeFileSync(path.join(memoryDir, charId + '.txt'), JSON.stringify(memory, null, '\t') + '\n', 'utf8');
 }
 
 function createUnusedOpenAI() {

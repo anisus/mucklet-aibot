@@ -50,7 +50,8 @@ be passed with `--charinstructions` or read from a file with `--charinstructions
 Administrator characters allowed to use admin commands may be configured with
 `bot.admins` or added with one or more `--admin=<CHARACTER_ID>` flags.
 Per-character memory summary files are stored in `bot.memoryDir`, or in the
-directory passed with `--memorydir`.
+directory passed with `--memorydir`. Each file contains a JSON record with the
+memory text and first/last seen timestamps.
 The response chain is reset after `bot.resetTimeout` milliseconds without an
 addressed message, and defaults to 15 minutes.
 OpenAI response chain compaction is always configured. The `bot.compactThreshold`
