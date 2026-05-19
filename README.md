@@ -41,6 +41,7 @@ export default {
 		admins: [
 			'admin-character-id',
 		],
+		visible: false,
 	},
 };
 ```
@@ -49,6 +50,8 @@ The API URL may also be passed with `--apiurl`. Character instructions may also
 be passed with `--charinstructions` or read from a file with `--charinstructionsfile`.
 Administrator characters allowed to use admin commands may be configured with
 `bot.admins` or added with one or more `--admin=<CHARACTER_ID>` flags.
+By default, the controlled character is hidden from the awake list. Set
+`bot.visible` to `true` to make it visible.
 Per-character memory summary files are stored in `bot.memoryDir`, or in the
 directory passed with `--memorydir`. Each file contains a JSON record with the
 memory text and first/last seen timestamps.
@@ -109,6 +112,17 @@ To build a local image from the current source checkout:
 ```text
 docker build -t mucklet-aibot .
 ```
+
+When bind mounting a host memory directory, make sure it is writable by the
+container `node` user. The official image runs as UID/GID `1000:1000`:
+
+```text
+mkdir -p ./memory
+sudo chown -R 1000:1000 ./memory
+```
+
+Alternatively, use a named Docker volume for `/app/memory` instead of a host
+bind mount.
 
 Token sources are checked in this order:
 

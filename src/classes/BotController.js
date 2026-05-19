@@ -122,6 +122,7 @@ In input message, only use ((ooc)) formatted text silently information not kno, 
  * @property {string} [openaiModel] OpenAI model.
  * @property {number} [compactThreshold] Response chain token threshold for OpenAI compaction.
  * @property {string} [characterInstructions] Additional character instructions.
+ * @property {boolean} [visible] Character is visible in awake list.
  * @property {string[]} [admins] Administrator character IDs.
  * @property {BotFunction[]} [functions] Bot functions.
  * @property {BotAddon[]} [addons] Bot addons.
@@ -148,6 +149,7 @@ class BotController {
 			throw new Error("compactThreshold must be a positive integer");
 		}
 		this.characterInstructions = opts.characterInstructions || '';
+		this.visible = !!opts.visible;
 		this.admins = opts.admins || [];
 		this.previousResponseId = null;
 		this.responseChain = Promise.resolve();
@@ -180,7 +182,7 @@ class BotController {
 			return;
 		}
 		this.started = true;
-		const woke = await this.bot.wakeup();
+		const woke = await this.bot.wakeup({ hidden: !this.visible });
 		this.logger.log?.(woke
 			? this.bot.getName() + " wakes up."
 			: this.bot.getName() + " is already awake.");

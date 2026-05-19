@@ -21,6 +21,9 @@ const config = {
 		/** Character IDs allowed to use admin commands such as "sleep". */
 		admins: [],
 
+		/** Set to true to make the controlled character visible in the awake list. */
+		visible: false,
+
 		/** Directory for generated per-character memory summaries. */
 		memoryDir: 'memory',
 

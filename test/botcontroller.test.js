@@ -42,6 +42,61 @@ test("BotController requires an OpenAI API key or client", () => {
 	controller.dispose();
 });
 
+test("BotController wakes the controlled character hidden by default", async () => {
+	const calls = [];
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+		state: 'asleep',
+	});
+	const controller = createBotController({}, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		logger: {},
+	});
+
+	try {
+		await controller.start();
+
+		assert.deepEqual(calls.find(call => call[1] == 'wakeup'), [ 'char.call', 'wakeup', { hidden: true }]);
+	} finally {
+		await controller.stop();
+		controller.dispose();
+	}
+});
+
+test("BotController wakes the controlled character visibly when configured", async () => {
+	const calls = [];
+	const controlled = createChar(calls, {
+		id: 'bot-char',
+		name: 'Ada',
+		surname: 'Lovelace',
+		state: 'asleep',
+	});
+	const controller = createBotController({}, {
+		char: controlled,
+		controlled,
+		on() {},
+		off() {},
+	}, {
+		logger: {},
+		visible: true,
+	});
+
+	try {
+		await controller.start();
+
+		assert.deepEqual(calls.find(call => call[1] == 'wakeup'), [ 'char.call', 'wakeup', undefined ]);
+	} finally {
+		await controller.stop();
+		controller.dispose();
+	}
+});
+
 test("BotController adds compaction context management to response requests", async () => {
 	const calls = [];
 	const requests = [];

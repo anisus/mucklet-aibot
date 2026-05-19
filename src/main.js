@@ -60,6 +60,7 @@ export async function main(args, options = {}) {
 		resetTimeout,
 		compactThreshold: cfg.bot?.compactThreshold,
 		characterInstructions,
+		visible: cfg.bot?.visible,
 		createClient: options.createClient,
 		logger: options.logger,
 		waitForShutdown: options.waitForShutdown,
@@ -75,6 +76,7 @@ export async function runBot(options = {}) {
 	const resetTimeout = options.resetTimeout;
 	const compactThreshold = options.compactThreshold;
 	const characterInstructions = options.characterInstructions || '';
+	const visible = !!options.visible;
 	const createClient = options.createClient || createBotClient;
 	const waitForShutdown = options.waitForShutdown;
 	const logger = options.logger || console;
@@ -93,6 +95,7 @@ export async function runBot(options = {}) {
 		openaiApiKey,
 		admins,
 		compactThreshold,
+		visible,
 		characterInstructions,
 		addons: [
 			new BotAddonSleep(),
