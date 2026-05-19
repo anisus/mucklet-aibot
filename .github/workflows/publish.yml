@@ -103,7 +103,8 @@ jobs:
         with:
           images: mucklet/mucklet-aibot
           tags: |
-            type=raw,value=${{ steps.release.outputs.version }}
+            type=semver,pattern={{version}},value=${{ steps.release.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.release.outputs.tag }}
             type=raw,value=latest,enable=${{ steps.release.outputs.prerelease != 'true' }}
 
       - name: Build and push Docker image
