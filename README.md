@@ -81,21 +81,15 @@ Ctrl+C to stop it.
 
 ## Docker
 
-Build an image from the current source checkout:
-
-```text
-docker build -t mucklet-aibot:0.1.0 .
-```
-
-Run it with credentials from environment variables and the realm API URL as a
-flag:
+Run the official Docker Hub image with credentials from environment variables
+and the realm API URL as a flag:
 
 ```text
 docker run --rm \
   -e OPENAI_API_KEY=<OPENAI_API_KEY> \
   -e MUCKLET_BOT_TOKEN=<BOT_TOKEN> \
   -v ./memory:/app/memory \
-  mucklet-aibot \
+  mucklet/mucklet-aibot \
   --apiurl=wss://api.test.mucklet.com
 ```
 
@@ -107,7 +101,13 @@ docker run --rm \
   -e MUCKLET_BOT_TOKEN=<BOT_TOKEN> \
   -v ./mucklet.config.js:/app/mucklet.config.js:ro \
   -v ./memory:/app/memory \
-  mucklet-aibot
+  mucklet/mucklet-aibot
+```
+
+To build a local image from the current source checkout:
+
+```text
+docker build -t mucklet-aibot .
 ```
 
 Token sources are checked in this order:
