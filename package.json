@@ -1,6 +1,6 @@
 {
   "name": "mucklet-aibot",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A Mucklet bot controlled through the ChatGPT API.",
   "type": "module",
   "main": "index.js",
@@ -13,10 +13,10 @@
     "mucklet.config.js"
   ],
   "repository": {
-    "url": "https://github.com/mucklet/mucklet-aibot",
+    "url": "https://github.com/anisus/mucklet-aibot",
     "type": "git"
   },
-  "homepage": "https://github.com/mucklet/mucklet-aibot#readme",
+  "homepage": "https://github.com/anisus/mucklet-aibot#readme",
   "engines": {
     "node": ">=22"
   },

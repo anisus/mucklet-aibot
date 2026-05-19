@@ -50,7 +50,8 @@ be passed with `--charinstructions` or read from a file with `--charinstructions
 Administrator characters allowed to use admin commands may be configured with
 `bot.admins` or added with one or more `--admin=<CHARACTER_ID>` flags.
 Per-character memory summary files are stored in `bot.memoryDir`, or in the
-directory passed with `--memorydir`.
+directory passed with `--memorydir`. Each file contains a JSON record with the
+memory text and first/last seen timestamps.
 The response chain is reset after `bot.resetTimeout` milliseconds without an
 addressed message, and defaults to 15 minutes.
 OpenAI response chain compaction is always configured. The `bot.compactThreshold`
@@ -77,6 +78,37 @@ MUCKLET_BOT_TOKEN=<BOT_TOKEN> OPENAI_API_KEY=<OPENAI_API_KEY> mucklet-aibot
 
 The process keeps running after startup so it can keep the character awake. Press
 Ctrl+C to stop it.
+
+## Docker
+
+Run the official Docker Hub image with credentials from environment variables
+and the realm API URL as a flag:
+
+```text
+docker run --rm \
+  -e OPENAI_API_KEY=<OPENAI_API_KEY> \
+  -e MUCKLET_BOT_TOKEN=<BOT_TOKEN> \
+  -v ./memory:/app/memory \
+  mucklet/mucklet-aibot \
+  --apiurl=wss://api.test.mucklet.com
+```
+
+Or mount a config file:
+
+```text
+docker run --rm \
+  -e OPENAI_API_KEY=<OPENAI_API_KEY> \
+  -e MUCKLET_BOT_TOKEN=<BOT_TOKEN> \
+  -v ./mucklet.config.js:/app/mucklet.config.js:ro \
+  -v ./memory:/app/memory \
+  mucklet/mucklet-aibot
+```
+
+To build a local image from the current source checkout:
+
+```text
+docker build -t mucklet-aibot .
+```
 
 Token sources are checked in this order:
 
